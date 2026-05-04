@@ -19,6 +19,8 @@ import {
   TargetIcon,
   XCircleIcon,
   UploadCloudIcon,
+  BookOpenIcon,
+  MessageSquareIcon,
 } from "lucide-react"
 import type { ProfilDusun } from "@/lib/types"
 
@@ -39,6 +41,7 @@ function toFormData(d: ProfilDusun | null): FormData {
     nama_kepala_dusun: d?.nama_kepala_dusun ?? "",
     foto_kepala_dusun: d?.foto_kepala_dusun ?? "",
     pesan_sambutan: d?.pesan_sambutan ?? "",
+    sejarah_dusun: d?.sejarah_dusun ?? "",
     visi: d?.visi ?? "",
     misi: d?.misi ?? "",
     email: d?.email ?? "",
@@ -381,16 +384,36 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
                     />
                   </div>
                 </div>
+                {/* Pesan Sambutan */}
                 <div className="sm:col-span-2">
-                  <label htmlFor="pesan_sambutan" className="text-xs text-slate-400 mb-1.5 block">
-                    Pesan Sambutan / Sejarah <span className="text-slate-600 text-[10px]">(opsional)</span>
+                  <label htmlFor="pesan_sambutan" className="text-xs text-slate-400 mb-1.5 flex items-center gap-2">
+                    <MessageSquareIcon className="size-3.5 text-green-400" />
+                    Pesan Sambutan{" "}
+                    <span className="text-slate-600 text-[10px]">(opsional)</span>
                   </label>
                   <textarea
                     id="pesan_sambutan"
-                    rows={3}
+                    rows={4}
                     value={formData.pesan_sambutan || ""}
                     onChange={(e) => update("pesan_sambutan", e.target.value)}
-                    placeholder="Pesan sambutan atau sejarah dusun..."
+                    placeholder="Tuliskan pesan sambutan dari kepala dusun..."
+                    className={textareaCls}
+                  />
+                </div>
+
+                {/* Sejarah Dusun */}
+                <div className="sm:col-span-2">
+                  <label htmlFor="sejarah_dusun" className="text-xs text-slate-400 mb-1.5 flex items-center gap-2">
+                    <BookOpenIcon className="size-3.5 text-amber-400" />
+                    Sejarah Dusun{" "}
+                    <span className="text-slate-600 text-[10px]">(opsional)</span>
+                  </label>
+                  <textarea
+                    id="sejarah_dusun"
+                    rows={5}
+                    value={formData.sejarah_dusun || ""}
+                    onChange={(e) => update("sejarah_dusun", e.target.value)}
+                    placeholder="Ceritakan sejarah dan asal-usul dusun ini..."
                     className={textareaCls}
                   />
                 </div>
