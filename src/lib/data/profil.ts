@@ -12,7 +12,7 @@ export const getProfilDusun = cache(async (): Promise<ProfilDusun | null> => {
     .from('profil_dusun')
     .select(
       'id, nama_dusun, nama_desa, nama_kecamatan, nama_kabupaten, nama_provinsi, kode_pos, ' +
-      'nama_kepala_dusun, foto_kepala_dusun, pesan_sambutan, visi, misi, ' +
+      'nama_kepala_dusun, foto_kepala_dusun, pesan_sambutan, sejarah_dusun, visi, misi, ' +
       'email, no_telepon, alamat_kantor, link_facebook, link_instagram, link_youtube, ' +
       'url_logo, url_banner, created_at, updated_at'
     )
