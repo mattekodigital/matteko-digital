@@ -1,4 +1,4 @@
-// Tipe database Supabase untuk tabel informasi_dusun
+// Tipe database untuk tabel informasi_dusun
 export interface InformasiDesa {
   id: string;
   kategori: "berita" | "pengumuman" | "agenda" | "galeri" | "wisata" | "umkm" | "pertanian";
@@ -11,7 +11,7 @@ export interface InformasiDesa {
   created_at: string;
 }
 
-// Tipe database Supabase untuk tabel profil_dusun
+// Tipe database untuk tabel profil_dusun
 export interface ProfilDusun {
   id: string;
   nama_dusun: string;
