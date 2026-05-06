@@ -33,7 +33,7 @@ const data = {
       icon: <LayoutDashboardIcon />,
     },
     {
-      title: "Statistik Desa",
+      title: "Statistik Dusun",
       url: "/dashboard/statistik",
       icon: <BarChartIcon />,
     },
@@ -43,7 +43,7 @@ const data = {
       icon: <MapPinIcon />,
     },
     {
-      title: "Informasi Desa",
+      title: "Informasi Dusun",
       url: "/dashboard/informasi-desa",
       icon: <InfoIcon />,
     },
@@ -81,7 +81,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div className="grid flex-1 text-left text-sm leading-tight ml-2">
                   <span className="truncate font-bold text-base">ADMIN</span>
                   <span className="truncate text-[10px] text-muted-foreground uppercase tracking-widest">
-                    Panel Desa Matteko
+                    Panel Dusun Matteko
                   </span>
                 </div>
               </Link>

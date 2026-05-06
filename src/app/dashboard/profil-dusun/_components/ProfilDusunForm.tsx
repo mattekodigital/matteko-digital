@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import {
   SaveIcon,
   Loader2Icon,
@@ -13,15 +12,14 @@ import {
   MapPinIcon,
   UserIcon,
   PhoneIcon,
-  GlobeIcon,
   ImageIcon,
   EyeIcon,
-  TargetIcon,
   XCircleIcon,
   UploadCloudIcon,
   BookOpenIcon,
   MessageSquareIcon,
 } from "lucide-react"
+import { saveProfilDusunAction } from "../_actions"
 import type { ProfilDusun } from "@/lib/types"
 
 interface ProfilDusunFormProps {
@@ -64,7 +62,6 @@ const textareaCls =
 
 export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
   const router = useRouter()
-  const supabase = createClient()
   const [isSaving, setIsSaving] = React.useState(false)
   const [toast, setToast] = React.useState<{ type: "success" | "error"; message: string } | null>(null)
   const [formData, setFormData] = React.useState<FormData>(toFormData(initialData))
@@ -88,7 +85,7 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
     setFotoPreview(initialData?.foto_kepala_dusun ?? "")
   }
 
-  // ── Foto Kepala Dusun: Upload ke Supabase Storage ──────────────────────────
+  // ── Foto Kepala Dusun: Upload ke storage lokal ──────────────────────────
   const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -99,23 +96,30 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
     setUploadingFoto(true)
 
     try {
-      const ext = file.name.split(".").pop()
-      const fileName = `kepala-dusun/${Date.now()}.${ext}`
-      const { data, error } = await supabase.storage
-        .from("images")
-        .upload(fileName, file, { upsert: true })
-      if (error) throw error
+      const body = new FormData()
+      body.append("file", file)
+      body.append("folder", "kepala-dusun")
 
-      const { data: publicData } = supabase.storage.from("images").getPublicUrl(data.path)
-      update("foto_kepala_dusun", publicData.publicUrl)
-      setFotoPreview(publicData.publicUrl)
+      const response = await fetch("/api/uploads", {
+        method: "POST",
+        body,
+      })
+      const contentType = response.headers.get("content-type") ?? ""
+      const result = contentType.includes("application/json")
+        ? ((await response.json()) as { url?: string; error?: string })
+        : { error: await response.text() }
+      if (!response.ok || !result.url) {
+        throw new Error(result.error ?? "Upload gagal")
+      }
+
+      update("foto_kepala_dusun", result.url)
+      setFotoPreview(result.url)
       showToast("success", "Foto kepala dusun berhasil diunggah")
     } catch (err: unknown) {
       showToast(
         "error",
         `Gagal mengunggah foto: ${err instanceof Error ? err.message : "Unknown error"}`
       )
-      setFotoPreview(formData.foto_kepala_dusun ?? "")
     } finally {
       setUploadingFoto(false)
       if (fotoInputRef.current) fotoInputRef.current.value = ""
@@ -134,23 +138,22 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
 
     try {
       if (initialData?.id) {
-        const { error } = await supabase
-          .from("profil_dusun")
-          .update({ ...formData, updated_at: new Date().toISOString() })
-          .eq("id", initialData.id)
-        if (error) throw error
+        const result = await saveProfilDusunAction({
+          id: initialData.id,
+          payload: formData,
+        })
+        if (result.error) throw new Error(result.error)
         showToast("success", "Profil dusun berhasil diperbarui!")
       } else {
-        const { error } = await supabase
-          .from("profil_dusun")
-          .insert([{ ...formData }])
-        if (error) throw error
+        const result = await saveProfilDusunAction({ payload: formData })
+        if (result.error) throw new Error(result.error)
         showToast("success", "Profil dusun berhasil disimpan!")
       }
       router.refresh()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      const msg = err?.message || err?.error_description || (typeof err === "string" ? err : "Unknown error")
+      const msg =
+        err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error"
       showToast("error", `Gagal menyimpan: ${msg}`)
     } finally {
       setIsSaving(false)
@@ -420,42 +423,7 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
               </div>
             </div>
 
-            {/* Visi & Misi */}
-            <div className="bg-slate-800/40 rounded-2xl border border-slate-700/50 p-5">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <TargetIcon className="size-3.5 text-purple-400" />
-                Visi &amp; Misi
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="visi" className="text-xs text-slate-400 mb-1.5 block">
-                    Visi Dusun <span className="text-slate-600 text-[10px]">(opsional)</span>
-                  </label>
-                  <textarea
-                    id="visi"
-                    rows={2}
-                    value={formData.visi || ""}
-                    onChange={(e) => update("visi", e.target.value)}
-                    placeholder="Visi dusun..."
-                    className={textareaCls}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="misi" className="text-xs text-slate-400 mb-1.5 block">
-                    Misi Dusun{" "}
-                    <span className="text-slate-600 text-[10px]">(pisahkan dengan baris baru, opsional)</span>
-                  </label>
-                  <textarea
-                    id="misi"
-                    rows={4}
-                    value={formData.misi || ""}
-                    onChange={(e) => update("misi", e.target.value)}
-                    placeholder="Misi 1&#10;Misi 2&#10;Misi 3..."
-                    className={textareaCls}
-                  />
-                </div>
-              </div>
-            </div>
+
 
             {/* Kontak */}
             <div className="bg-slate-800/40 rounded-2xl border border-slate-700/50 p-5">
@@ -506,80 +474,7 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
               </div>
             </div>
 
-            {/* Media Sosial & Aset */}
-            <div className="bg-slate-800/40 rounded-2xl border border-slate-700/50 p-5">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <GlobeIcon className="size-3.5 text-cyan-400" />
-                Media Sosial &amp; Aset Visual
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="link_facebook" className="text-xs text-slate-400 mb-1.5 block">
-                    Link Facebook
-                  </label>
-                  <input
-                    id="link_facebook"
-                    type="text"
-                    value={formData.link_facebook || ""}
-                    onChange={(e) => update("link_facebook", e.target.value)}
-                    placeholder="https://facebook.com/..."
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="link_instagram" className="text-xs text-slate-400 mb-1.5 block">
-                    Link Instagram
-                  </label>
-                  <input
-                    id="link_instagram"
-                    type="text"
-                    value={formData.link_instagram || ""}
-                    onChange={(e) => update("link_instagram", e.target.value)}
-                    placeholder="https://instagram.com/..."
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="link_youtube" className="text-xs text-slate-400 mb-1.5 block">
-                    Link YouTube
-                  </label>
-                  <input
-                    id="link_youtube"
-                    type="text"
-                    value={formData.link_youtube || ""}
-                    onChange={(e) => update("link_youtube", e.target.value)}
-                    placeholder="https://youtube.com/..."
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="url_logo" className="text-xs text-slate-400 mb-1.5 block">
-                    URL Logo Dusun
-                  </label>
-                  <input
-                    id="url_logo"
-                    type="text"
-                    value={formData.url_logo || ""}
-                    onChange={(e) => update("url_logo", e.target.value)}
-                    placeholder="https://..."
-                    className={inputCls}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label htmlFor="url_banner" className="text-xs text-slate-400 mb-1.5 block">
-                    URL Banner Dusun
-                  </label>
-                  <input
-                    id="url_banner"
-                    type="text"
-                    value={formData.url_banner || ""}
-                    onChange={(e) => update("url_banner", e.target.value)}
-                    placeholder="https://..."
-                    className={inputCls}
-                  />
-                </div>
-              </div>
-            </div>
+
           </div>
 
           {/* ── Right: Actions + Preview ── */}
@@ -652,21 +547,7 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
                 Pratinjau Aset
               </h3>
               <div className="space-y-3">
-                {formData.url_logo ? (
-                  <div>
-                    <p className="text-[10px] text-slate-500 mb-1.5">Logo</p>
-                    <img
-                      src={formData.url_logo}
-                      alt="Logo Dusun"
-                      className="h-14 w-auto object-contain rounded-lg bg-slate-900/60 p-1"
-                      onError={(e) => {
-                        ;(e.target as HTMLImageElement).style.display = "none"
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-slate-600 italic">Belum ada URL logo.</p>
-                )}
+
                 {fotoPreview ? (
                   <div>
                     <p className="text-[10px] text-slate-500 mb-1.5">Foto Kepala Dusun</p>

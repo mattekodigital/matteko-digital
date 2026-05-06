@@ -1,20 +1,13 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { createClient } from "@/lib/supabase/server"
-import type { ProfilDusun } from "@/lib/types"
+import { getProfilDusun } from "@/lib/data/profil"
 import ProfilDusunForm from "./_components/ProfilDusunForm"
 
+export const dynamic = "force-dynamic"
+
 export default async function DashboardProfilDusunPage() {
-  const supabase = await createClient()
-
-  const { data: profilRaw } = await supabase
-    .from("profil_dusun")
-    .select("*")
-    .limit(1)
-    .single()
-
-  const profil: ProfilDusun | null = profilRaw ?? null
+  const profil = await getProfilDusun()
 
   return (
     <SidebarProvider
