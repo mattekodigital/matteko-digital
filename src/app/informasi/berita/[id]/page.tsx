@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Calendar, User, ArrowLeft, ArrowRight, Tag, MapPin } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getInformasiByIdAndKategori, listRelatedInformasi } from "@/lib/data/informasi";
 import type { InformasiDesa } from "@/lib/types";
 
 // ─── Helper ────────────────────────────────────────────────────────────────────
@@ -23,33 +23,15 @@ export default async function BeritaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const article = await getInformasiByIdAndKategori(id, "berita");
 
-  // Fetch artikel utama
-  const { data: article, error } = await supabase
-    .from("informasi_dusun")
-    .select("*")
-    .eq("id", id)
-    .eq("kategori", "berita")
-    .single();
-
-  if (error || !article) {
+  if (!article) {
     notFound();
   }
 
   const item = article as InformasiDesa;
 
-  // Fetch berita terkait (selain artikel ini)
-  const { data: relatedData } = await supabase
-    .from("informasi_dusun")
-    .select("id, judul, konten, image_url, penulis, tanggal_kegiatan, created_at, kategori, lokasi")
-
-    .eq("kategori", "berita")
-    .neq("id", id)
-    .order("created_at", { ascending: false })
-    .limit(3);
-
-  const relatedList: InformasiDesa[] = relatedData ?? [];
+  const relatedList = await listRelatedInformasi("berita", id, { limit: 3 });
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -83,7 +65,7 @@ export default async function BeritaDetailPage({
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Kembali ke Berita
+          Kembali
         </Link>
 
         {/* ── Meta Info ─────────────────────────────────────────────── */}
@@ -166,7 +148,7 @@ export default async function BeritaDetailPage({
               </span>
             )}
             <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full font-medium">
-              Desa Matteko
+              Dusun Matteko
             </span>
           </div>
 

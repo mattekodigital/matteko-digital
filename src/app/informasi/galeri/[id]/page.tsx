@@ -9,7 +9,7 @@ import {
   Images,
   ArrowRight,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getInformasiByIdAndKategori, listRelatedInformasi } from "@/lib/data/informasi";
 import type { InformasiDesa } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -41,34 +41,15 @@ export default async function GaleriDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const foto = await getInformasiByIdAndKategori(id, "galeri");
 
-  // Fetch foto utama
-  const { data: foto, error } = await supabase
-    .from("informasi_dusun")
-    .select("*")
-    .eq("id", id)
-    .eq("kategori", "galeri")
-    .single();
-
-  if (error || !foto) {
+  if (!foto) {
     notFound();
   }
 
   const item = foto as InformasiDesa;
 
-  // Fetch galeri terkait (selain foto ini)
-  const { data: relatedData } = await supabase
-    .from("informasi_dusun")
-    .select(
-      "id, judul, konten, image_url, penulis, tanggal_kegiatan, lokasi, created_at, kategori"
-    )
-    .eq("kategori", "galeri")
-    .neq("id", id)
-    .order("created_at", { ascending: false })
-    .limit(4);
-
-  const relatedList: InformasiDesa[] = relatedData ?? [];
+  const relatedList = await listRelatedInformasi("galeri", id, { limit: 4 });
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -106,7 +87,7 @@ export default async function GaleriDetailPage({
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-purple-600 transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Kembali ke Galeri
+          Kembali
         </Link>
 
         {/* ── Meta strip ────────────────────────────────────────────── */}
@@ -181,20 +162,30 @@ export default async function GaleriDetailPage({
           </div>
         )}
 
-        {/* ── Tag pills ──────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-2 pt-2">
-          <span className="text-sm text-gray-400 font-medium">Tag:</span>
-          <span className="text-xs bg-purple-50 text-purple-700 border border-purple-100 px-3 py-1 rounded-full font-medium capitalize">
-            Galeri
-          </span>
-          {item.lokasi && (
-            <span className="text-xs bg-purple-50 text-purple-700 border border-purple-100 px-3 py-1 rounded-full font-medium">
-              {item.lokasi}
+        {/* ── Tag pills + Back button ─────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-2 mt-10 pt-6 border-t border-gray-200">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-400 font-medium">Tag:</span>
+            <span className="text-xs bg-purple-50 text-purple-700 border border-purple-100 px-3 py-1 rounded-full font-medium capitalize">
+              Galeri
             </span>
-          )}
-          <span className="text-xs bg-purple-50 text-purple-700 border border-purple-100 px-3 py-1 rounded-full font-medium">
-            Desa Matteko
-          </span>
+            {item.lokasi && (
+              <span className="text-xs bg-purple-50 text-purple-700 border border-purple-100 px-3 py-1 rounded-full font-medium">
+                {item.lokasi}
+              </span>
+            )}
+            <span className="text-xs bg-purple-50 text-purple-700 border border-purple-100 px-3 py-1 rounded-full font-medium">
+              Dusun Matteko
+            </span>
+          </div>
+
+          <Link
+            href="/informasi/galeri"
+            className="inline-flex items-center gap-2 text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2 rounded-lg transition-colors shadow-sm"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Kembali
+          </Link>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ import {
   CalendarDays,
   Clock,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getInformasiByIdAndKategori, listRelatedInformasi } from "@/lib/data/informasi";
 import type { InformasiDesa } from "@/lib/types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,17 +68,9 @@ export default async function AgendaDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const agenda = await getInformasiByIdAndKategori(id, "agenda");
 
-  // Fetch agenda utama
-  const { data: agenda, error } = await supabase
-    .from("informasi_dusun")
-    .select("*")
-    .eq("id", id)
-    .eq("kategori", "agenda")
-    .single();
-
-  if (error || !agenda) {
+  if (!agenda) {
     notFound();
   }
 
@@ -86,18 +78,11 @@ export default async function AgendaDetailPage({
   const displayDate = item.tanggal_kegiatan ?? item.created_at;
   const status = getStatus(item.tanggal_kegiatan);
 
-  // Fetch agenda terkait
-  const { data: relatedData } = await supabase
-    .from("informasi_dusun")
-    .select(
-      "id, judul, konten, image_url, penulis, tanggal_kegiatan, created_at, kategori, lokasi"
-    )
-    .eq("kategori", "agenda")
-    .neq("id", id)
-    .order("tanggal_kegiatan", { ascending: true })
-    .limit(3);
-
-  const relatedList: InformasiDesa[] = relatedData ?? [];
+  const relatedList = await listRelatedInformasi("agenda", id, {
+    orderBy: "tanggal_kegiatan",
+    ascending: true,
+    limit: 3,
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -139,7 +124,7 @@ export default async function AgendaDetailPage({
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#108c64] transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Kembali ke Agenda
+          Kembali
         </Link>
 
         {/* ── Info Summary Block ─────────────────────────────────────────────── */}
@@ -275,7 +260,7 @@ export default async function AgendaDetailPage({
               </span>
             )}
             <span className="text-xs bg-green-50 text-[#108c64] border border-green-100 px-3 py-1 rounded-full font-medium">
-              Desa Matteko
+              Dusun Matteko
             </span>
           </div>
 

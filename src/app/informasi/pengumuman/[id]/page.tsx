@@ -11,7 +11,7 @@ import {
   Image as ImageIcon,
   Clock,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getInformasiByIdAndKategori, listRelatedInformasi } from "@/lib/data/informasi";
 import type { InformasiDesa } from "@/lib/types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -54,35 +54,16 @@ export default async function PengumumanDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const announcement = await getInformasiByIdAndKategori(id, "pengumuman");
 
-  // Fetch pengumuman utama
-  const { data: announcement, error } = await supabase
-    .from("informasi_dusun")
-    .select("*")
-    .eq("id", id)
-    .eq("kategori", "pengumuman")
-    .single();
-
-  if (error || !announcement) {
+  if (!announcement) {
     notFound();
   }
 
   const item = announcement as InformasiDesa;
   const displayDate = item.tanggal_kegiatan ?? item.created_at;
 
-  // Fetch pengumuman terkait
-  const { data: relatedData } = await supabase
-    .from("informasi_dusun")
-    .select(
-      "id, judul, konten, image_url, penulis, tanggal_kegiatan, created_at, kategori, lokasi"
-    )
-    .eq("kategori", "pengumuman")
-    .neq("id", id)
-    .order("created_at", { ascending: false })
-    .limit(3);
-
-  const relatedList: InformasiDesa[] = relatedData ?? [];
+  const relatedList = await listRelatedInformasi("pengumuman", id, { limit: 3 });
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -125,7 +106,7 @@ export default async function PengumumanDetailPage({
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Kembali ke Pengumuman
+          Kembali
         </Link>
 
         {/* ── Official Notice Block ─────────────────────────────────────────── */}
@@ -149,7 +130,7 @@ export default async function PengumumanDetailPage({
               </span>
             </div>
             <p className="text-gray-700 text-sm leading-relaxed">
-              Pemerintah Desa Matteko mengumumkan informasi berikut kepada
+              Pemerintah Dusun Matteko mengumumkan informasi berikut kepada
               seluruh warga. Harap membaca dengan seksama dan menyebarluaskan
               kepada yang membutuhkan.
             </p>
@@ -253,7 +234,7 @@ export default async function PengumumanDetailPage({
               </span>
             )}
             <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full font-medium">
-              Desa Matteko
+              Dusun Matteko
             </span>
           </div>
 
