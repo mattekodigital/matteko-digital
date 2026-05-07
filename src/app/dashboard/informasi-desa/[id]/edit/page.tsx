@@ -2,8 +2,7 @@ import { notFound } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { createClient } from "@/lib/supabase/server"
-import type { InformasiDesa } from "@/lib/types"
+import { getInformasiById } from "@/lib/data/informasi"
 import InformasiDesaForm from "../../_components/InformasiDesaForm"
 
 export default async function EditInformasiDesaPage({
@@ -12,19 +11,11 @@ export default async function EditInformasiDesaPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
+  const item = await getInformasiById(id)
 
-  const { data, error } = await supabase
-    .from("informasi_dusun")
-    .select("*")
-    .eq("id", id)
-    .single()
-
-  if (error || !data) {
+  if (!item) {
     notFound()
   }
-
-  const item = data as InformasiDesa
 
   return (
     <SidebarProvider

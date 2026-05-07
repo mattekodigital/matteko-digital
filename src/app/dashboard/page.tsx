@@ -3,8 +3,10 @@ import { CalendarIcon, FileTextIcon, ImageIcon, EditIcon, PlusCircleIcon, BarCha
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { createClient } from "@/lib/supabase/server"
+import { countInformasi, listLatestInformasi } from "@/lib/data/informasi"
 import type { InformasiDesa } from "@/lib/types"
+
+export const dynamic = "force-dynamic"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatDate(iso: string | null) {
@@ -40,37 +42,12 @@ const KATEGORI_COLOR: Record<InformasiDesa["kategori"], string> = {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default async function DashboardPage() {
-  const supabase = await createClient()
-
-  // Fetch semua data paralel
-  const [
-    { count: totalBerita },
-    { count: totalGaleri },
-    { count: totalInformasi },
-    { data: latestRaw },
-  ] = await Promise.all([
-    supabase
-      .from("informasi_dusun")
-      .select("*", { count: "exact", head: true })
-      .eq("kategori", "berita"),
-    supabase
-      .from("informasi_dusun")
-      .select("*", { count: "exact", head: true })
-      .eq("kategori", "galeri"),
-    supabase
-      .from("informasi_dusun")
-      .select("*", { count: "exact", head: true }),
-    supabase
-      .from("informasi_dusun")
-      .select("id, judul, kategori, image_url, created_at, penulis")
-      .order("created_at", { ascending: false })
-      .limit(5),
+  const [totalBerita, totalGaleri, totalInformasi, latestItems] = await Promise.all([
+    countInformasi("berita"),
+    countInformasi("galeri"),
+    countInformasi(),
+    listLatestInformasi(5),
   ])
-
-  const latestItems = (latestRaw ?? []) as Pick<
-    InformasiDesa,
-    "id" | "judul" | "kategori" | "image_url" | "created_at" | "penulis"
-  >[]
 
   const now = new Date()
 
@@ -93,10 +70,10 @@ export default async function DashboardPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold tracking-tight">
-                Selamat Datang, Administrator Desa 👋
+                Selamat Datang, Administrator Dusun 👋
               </h2>
               <p className="text-slate-400 mt-1">
-                Berikut adalah ringkasan aktivitas di desa digital Anda hari ini.
+                Berikut adalah ringkasan aktivitas di dusun digital Anda hari ini.
               </p>
             </div>
             <div className="flex items-center gap-2 bg-slate-800/50 px-4 py-2 rounded-md border border-slate-700/50">
@@ -182,7 +159,7 @@ export default async function DashboardPage() {
                   <div>
                     <div className="font-medium text-sm text-slate-200">Lihat Semua Konten</div>
                     <div className="text-xs text-slate-400 mt-0.5">
-                      Kelola seluruh informasi desa
+                      Kelola seluruh informasi dusun
                     </div>
                   </div>
                 </Link>

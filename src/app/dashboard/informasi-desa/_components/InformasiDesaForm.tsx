@@ -4,7 +4,6 @@ import React, { useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeftIcon,
-  SaveIcon,
   SendIcon,
   ImageIcon,
   XCircleIcon,
@@ -18,7 +17,7 @@ import {
   CheckCircle2Icon,
   AlertCircleIcon,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { saveInformasiAction } from "../_actions"
 import type { InformasiDesa } from "@/lib/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -73,7 +72,6 @@ function formatPreviewDate(iso: string): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function InformasiDesaForm({ mode, initialData }: Props) {
   const router = useRouter()
-  const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState<FormData>({
@@ -123,18 +121,27 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
 
     setUploading(true)
     try {
-      const ext = file.name.split(".").pop()
-      const fileName = `informasi/${Date.now()}.${ext}`
-      const { data, error } = await supabase.storage.from("images").upload(fileName, file, { upsert: true })
-      if (error) throw error
+      const body = new FormData()
+      body.append("file", file)
+      body.append("folder", "informasi")
 
-      const { data: publicData } = supabase.storage.from("images").getPublicUrl(data.path)
-      update("image_url", publicData.publicUrl)
-      setImagePreview(publicData.publicUrl)
+      const response = await fetch("/api/uploads", {
+        method: "POST",
+        body,
+      })
+      const contentType = response.headers.get("content-type") ?? ""
+      const result = contentType.includes("application/json")
+        ? ((await response.json()) as { url?: string; error?: string })
+        : { error: await response.text() }
+      if (!response.ok || !result.url) {
+        throw new Error(result.error ?? "Upload gagal")
+      }
+
+      update("image_url", result.url)
+      setImagePreview(result.url)
       showToast("success", "Gambar berhasil diunggah")
     } catch (err: unknown) {
       showToast("error", `Gagal mengunggah gambar: ${err instanceof Error ? err.message : "Unknown error"}`)
-      setImagePreview(form.image_url)
     } finally {
       setUploading(false)
     }
@@ -164,12 +171,12 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
 
     try {
       if (mode === "create") {
-        const { error } = await supabase.from("informasi_dusun").insert([payload])
-        if (error) throw error
+        const result = await saveInformasiAction({ payload })
+        if (result.error) throw new Error(result.error)
         showToast("success", "Data berhasil ditambahkan!")
       } else {
-        const { error } = await supabase.from("informasi_dusun").update(payload).eq("id", initialData!.id)
-        if (error) throw error
+        const result = await saveInformasiAction({ id: initialData!.id, payload })
+        if (result.error) throw new Error(result.error)
         showToast("success", "Data berhasil diperbarui!")
       }
       setTimeout(() => router.push("/dashboard/informasi-desa"), 1200)
@@ -213,7 +220,7 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
           </button>
           <div>
             <h2 className="text-xl font-bold tracking-tight">
-              {mode === "create" ? "Tambah Informasi Desa" : "Edit Informasi Desa"}
+              {mode === "create" ? "Tambah Informasi Dusun" : "Edit Informasi Dusun"}
             </h2>
             <p className="text-slate-400 text-sm mt-0.5">
               {mode === "create" ? "Buat konten baru untuk dipublikasikan" : "Perbarui data informasi yang ada"}
@@ -422,7 +429,7 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
                   type="text"
                   value={form.lokasi}
                   onChange={(e) => update("lokasi", e.target.value)}
-                  placeholder="cth: Balai Desa Matteko"
+                  placeholder="cth: Balai Dusun Matteko"
                   className="w-full bg-slate-900/50 border border-slate-600/50 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all"
                 />
               </div>
