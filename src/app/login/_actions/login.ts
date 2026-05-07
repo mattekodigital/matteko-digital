@@ -1,19 +1,18 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { authenticateAdmin, clearAdminSession, setAdminSession } from "@/lib/auth"
 import { z } from "zod"
 
-// ─── Validation schema ─────────────────────────────────────────────────────
 const LoginSchema = z.object({
-  email: z.email("Format email tidak valid"),
+  email: z.email("Format email tidak valid").trim().toLowerCase(),
   password: z.string().min(6, "Password minimal 6 karakter"),
 })
 
-// ─── Generic error helper (jangan bocorkan detail internal ke client) ──────
 const GENERIC_AUTH_ERROR =
   "Email atau password salah. Silakan coba lagi."
+const AUTH_SERVICE_ERROR =
+  "Login belum bisa diproses karena koneksi database bermasalah. Cek PostgreSQL lalu coba lagi."
 
-// ─── Action ───────────────────────────────────────────────────────────────
 export async function loginAction(
   formData: FormData
 ): Promise<{ error: string } | void> {
@@ -22,7 +21,6 @@ export async function loginAction(
     password: formData.get("password"),
   }
 
-  // Validasi input
   const parsed = LoginSchema.safeParse(raw)
   if (!parsed.success) {
     const firstError = parsed.error.issues[0]?.message ?? "Input tidak valid"
@@ -31,25 +29,24 @@ export async function loginAction(
 
   const { email, password } = parsed.data
 
-  const supabase = await createClient()
+  try {
+    const admin = await authenticateAdmin(email, password)
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+    if (!admin) {
+      return { error: GENERIC_AUTH_ERROR }
+    }
 
-  if (error) {
-    // Log error di server (tidak terekspos ke client)
-    console.error("[LoginAction] Supabase auth error:", error.message)
-    // Kembalikan pesan generik agar tidak bocorkan info sensitif
-    return { error: GENERIC_AUTH_ERROR }
+    await setAdminSession(admin)
+  } catch (error) {
+    console.error("Login action failed", {
+      email,
+      error,
+    })
+
+    return { error: AUTH_SERVICE_ERROR }
   }
-
-  // Redirect ditangani di client setelah action sukses (void = sukses)
 }
 
-// ─── Logout action ────────────────────────────────────────────────────────
 export async function logoutAction(): Promise<void> {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
+  await clearAdminSession()
 }

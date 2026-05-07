@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { getCurrentAdmin } from "@/lib/auth"
 import LoginForm from "./_components/LoginForm"
 import type { Metadata } from "next"
 
@@ -10,10 +10,7 @@ export const metadata: Metadata = {
 
 export default async function LoginPage() {
   // Jika sudah login, langsung redirect ke dashboard
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentAdmin()
 
   if (user) {
     redirect("/dashboard")
