@@ -11,25 +11,30 @@ const montserrat = Montserrat({
   weight: ["300", "400", "500", "600", "700"],
 });
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
-    template: '%s | Desa Matteko Digital',
-    default: 'Desa Matteko Digital - Website Resmi Dusun Matteko',
+    template: '%s | Dusun Matteko Digital',
+    default: 'Dusun Matteko Digital - Website Resmi Dusun Matteko',
   },
-  description: 'Website resmi Dusun Matteko, Kabupaten Gowa, Sulawesi Selatan. Informasi pemerintahan, berita terbaru, statistik penduduk, dan potensi desa.',
-  keywords: ['Dusun Matteko', 'Desa Matteko', 'Kabupaten Gowa', 'Sulawesi Selatan', 'Pemerintahan Desa', 'Website Desa'],
+  description: 'Website resmi Dusun Matteko, Kabupaten Gowa, Sulawesi Selatan. Informasi pemerintahan, berita terbaru, statistik penduduk, dan potensi dusun.',
+  keywords: ['Dusun Matteko', 'Dusun Matteko', 'Kabupaten Gowa', 'Sulawesi Selatan', 'Pemerintahan Dusun', 'Website Dusun'],
   openGraph: {
     type: 'website',
     locale: 'id_ID',
-    url: 'https://matteko.desa.id',
+    url: 'https://dusunmatteko.my.id',
     siteName: 'Dusun Matteko Digital',
     title: 'Dusun Matteko Digital - Website Resmi Dusun Matteko',
-    description: 'Website resmi Dusun Matteko, Kabupaten Gowa. Informasi pemerintahan, berita, statistik penduduk, dan potensi desa.',
+    description: 'Website resmi Dusun Matteko, Kabupaten Gowa. Informasi pemerintahan, berita, statistik penduduk, dan potensi dusun.',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Dusun Matteko Digital',
     description: 'Website resmi Dusun Matteko, Kabupaten Gowa.',
+  },
+  icons: {
+    icon: '/logo.webp',
   },
 };
 

@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/dashboard/', '/dashboard', '/login'],
       },
     ],
-    sitemap: 'https://matteko.desa.id/sitemap.xml',
+    sitemap: 'https://dusunmatteko.my.id/sitemap.xml',
   }
 }

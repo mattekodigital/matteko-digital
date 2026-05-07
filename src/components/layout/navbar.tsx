@@ -156,7 +156,7 @@ export const Navbar = ({ profil }: { profil?: ProfilDusun }) => {
         <Link href="/" className="flex items-center gap-3 shrink-0 group">
           <div className="relative w-10 h-10 overflow-hidden rounded-full transition-transform duration-300 group-hover:scale-110">
             <Image
-              src={profil?.url_logo || "/logo.png"}
+              src={profil?.url_logo || "/logo.webp"}
               alt={`Logo ${profil?.nama_dusun || "Dusun"}`}
               fill
               className="object-contain"
