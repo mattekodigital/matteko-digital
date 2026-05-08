@@ -1,28 +1,16 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { createClient } from "@/lib/supabase/server"
-import type { InfoWilayah, DataStatistik } from "@/lib/types"
+import { getAllDataStatistik, getLatestInfoWilayah } from "@/lib/data/statistik"
 import StatistikTabs from "./_components/StatistikTabs"
 
+export const dynamic = "force-dynamic"
+
 export default async function DashboardStatistikPage() {
-  const supabase = await createClient()
-
-  const [{ data: wilayahRaw }, { data: statistikRaw }] = await Promise.all([
-    supabase
-      .from("info_wilayah")
-      .select("*")
-      .order("id", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("data_statistik")
-      .select("*")
-      .order("urutan", { ascending: true }),
+  const [wilayah, statistik] = await Promise.all([
+    getLatestInfoWilayah(),
+    getAllDataStatistik(),
   ])
-
-  const wilayah: InfoWilayah | null = wilayahRaw ?? null
-  const statistik: DataStatistik[] = statistikRaw ?? []
 
   return (
     <SidebarProvider
@@ -40,7 +28,7 @@ export default async function DashboardStatistikPage() {
         <div className="flex flex-1 flex-col p-4 lg:p-6 gap-6">
           {/* Header */}
           <div>
-            <h2 className="text-xl font-bold tracking-tight">Manajemen Statistik Desa</h2>
+            <h2 className="text-xl font-bold tracking-tight">Manajemen Statistik Dusun</h2>
             <p className="text-slate-400 text-sm mt-0.5">
               Kelola data wilayah dan grafik statistik yang tampil di halaman publik
             </p>

@@ -12,7 +12,7 @@ import {
   AlertCircleIcon,
   RefreshCwIcon,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { saveInfoWilayahAction } from "../_actions"
 import type { InfoWilayah } from "@/lib/types"
 
 interface Props {
@@ -44,7 +44,6 @@ function toFormState(d: InfoWilayah | null): FormState {
 }
 
 export default function InfoWilayahForm({ initialData }: Props) {
-  const supabase = createClient()
   const [form, setForm] = useState<FormState>(toFormState(initialData))
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null)
@@ -93,20 +92,21 @@ export default function InfoWilayahForm({ initialData }: Props) {
 
     try {
       if (initialData) {
-        const { error } = await supabase
-          .from("info_wilayah")
-          .update(payload)
-          .eq("id", initialData.id)
-        if (error) throw error
+        const result = await saveInfoWilayahAction({
+          id: initialData.id,
+          payload,
+        })
+        if (result.error) throw new Error(result.error)
         showToast("success", "Data wilayah berhasil diperbarui!")
       } else {
-        const { error } = await supabase.from("info_wilayah").insert([payload])
-        if (error) throw error
+        const result = await saveInfoWilayahAction({ payload })
+        if (result.error) throw new Error(result.error)
         showToast("success", "Data wilayah berhasil disimpan!")
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error saving wilayah data:", err)
-      const msg = err?.message || err?.error_description || (typeof err === 'string' ? err : "Unknown error")
+      const msg =
+        err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error"
       showToast("error", `Gagal menyimpan: ${msg}`)
     } finally {
       setSubmitting(false)

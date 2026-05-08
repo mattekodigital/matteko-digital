@@ -14,7 +14,10 @@ import {
   Users2Icon,
   GraduationCapIcon,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import {
+  deleteDataStatistikAction,
+  saveDataStatistikAction,
+} from "../_actions"
 import type { DataStatistik } from "@/lib/types"
 
 type Kategori = DataStatistik["kategori"]
@@ -85,8 +88,6 @@ interface Props {
 }
 
 export default function DataStatistikManager({ initialData }: Props) {
-  const supabase = createClient()
-
   const [drafts, setDrafts] = useState<Record<Kategori, DraftRow[]>>({
     pekerjaan: toDraftRows(initialData.filter((d) => d.kategori === "pekerjaan")),
     agama: toDraftRows(initialData.filter((d) => d.kategori === "agama")),
@@ -135,12 +136,9 @@ export default function DataStatistikManager({ initialData }: Props) {
     async (kat: Kategori, idx: number) => {
       const row = drafts[kat][idx]
       if (row.id) {
-        const { error } = await supabase
-          .from("data_statistik")
-          .delete()
-          .eq("id", row.id)
-        if (error) {
-          showToast("error", `Gagal menghapus: ${error.message}`)
+        const result = await deleteDataStatistikAction(row.id)
+        if (result.error) {
+          showToast("error", result.error)
           return
         }
       }
@@ -151,7 +149,7 @@ export default function DataStatistikManager({ initialData }: Props) {
       })
       showToast("success", "Baris berhasil dihapus")
     },
-    [drafts, supabase]
+    [drafts]
   )
 
   // ── Save all rows for a category ────────────────────────────────────────────
@@ -178,22 +176,15 @@ export default function DataStatistikManager({ initialData }: Props) {
         }
 
         if (row.id) {
-          const { error } = await supabase
-            .from("data_statistik")
-            .update(payload)
-            .eq("id", row.id)
-          if (error) throw error
+          const result = await saveDataStatistikAction({ id: row.id, ...payload })
+          if (result.error) throw new Error(result.error)
         } else {
-          const { data, error } = await supabase
-            .from("data_statistik")
-            .insert([payload])
-            .select("id")
-            .single()
-          if (error) throw error
+          const result = await saveDataStatistikAction(payload)
+          if (result.error) throw new Error(result.error)
           // Persist the new id so future saves update correctly
           setDrafts((prev) => {
             const updated = [...prev[kat]]
-            updated[i] = { ...updated[i], id: data.id, isNew: false, isDirty: false }
+            updated[i] = { ...updated[i], id: result.id, isNew: false, isDirty: false }
             return { ...prev, [kat]: updated }
           })
         }
@@ -206,9 +197,10 @@ export default function DataStatistikManager({ initialData }: Props) {
       }))
 
       showToast("success", `Data "${KATEGORI_CONFIG.find((k) => k.id === kat)?.label}" berhasil disimpan!`)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error saving statistik data:", err)
-      const msg = err?.message || err?.error_description || (typeof err === 'string' ? err : "Unknown error")
+      const msg =
+        err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error"
       showToast("error", `Gagal menyimpan: ${msg}`)
     } finally {
       setSaving((prev) => ({ ...prev, [kat]: false }))

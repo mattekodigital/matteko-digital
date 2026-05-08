@@ -11,8 +11,8 @@ import {
   Flame,
   BarChart3,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import type { InfoWilayah, DataStatistik } from "@/lib/types";
+import { getAllDataStatistik, getLatestInfoWilayah } from "@/lib/data/statistik";
+import type { DataStatistik } from "@/lib/types";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/breadcrumb";
 
 export const metadata: Metadata = {
-  title: 'Data & Statistik Desa',
+  title: 'Data & Statistik Dusun',
   description: 'Data statistik penduduk Dusun Matteko — demografi, mata pencaharian, agama, gender, dan tingkat pendidikan masyarakat.',
   openGraph: {
-    title: 'Data & Statistik Desa Matteko',
+    title: 'Data & Statistik Dusun Matteko',
     description: 'Data statistik penduduk Dusun Matteko — demografi, mata pencaharian, agama, gender, dan tingkat pendidikan.',
   },
 };
@@ -54,26 +54,13 @@ function buildConicGradient(items: DataStatistik[]): string {
   return `conic-gradient(${stops.join(", ")})`;
 }
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function StatistikPage() {
-  const supabase = await createClient();
-
-  const [{ data: wilayahRaw }, { data: statistikRaw }] = await Promise.all([
-    supabase
-      .from("info_wilayah")
-      .select("*")
-      .order("id", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("data_statistik")
-      .select("*")
-      .order("urutan", { ascending: true }),
+  const [wilayah, statistik] = await Promise.all([
+    getLatestInfoWilayah(),
+    getAllDataStatistik(),
   ]);
-
-  const wilayah: InfoWilayah | null = wilayahRaw ?? null;
-  const statistik: DataStatistik[] = statistikRaw ?? [];
 
   const pekerjaan = statistik.filter((s) => s.kategori === "pekerjaan");
   const agama = statistik.filter((s) => s.kategori === "agama");
@@ -86,10 +73,6 @@ export default async function StatistikPage() {
 
   const laki = gender.find(
     (g) => g.label.toLowerCase().includes("laki") || g.label === "L"
-  );
-  const perempuan = gender.find(
-    (g) =>
-      g.label.toLowerCase().includes("perempuan") || g.label === "P"
   );
   const lakiPct = totalGender > 0 ? ((laki?.nilai ?? 0) / totalGender) * 100 : 50;
   const perempuanPct = 100 - lakiPct;
@@ -127,7 +110,7 @@ export default async function StatistikPage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Statistik Desa</BreadcrumbPage>
+              <BreadcrumbPage>Statistik Dusun</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -150,7 +133,7 @@ export default async function StatistikPage() {
                 <StatCard
                   label="Luas Wilayah"
                   value={`${wilayah.luas_wilayah.toLocaleString("id-ID")}`}
-                  unit="km²"
+                  unit="Ha"
                   icon={<Map className="w-5 h-5 text-blue-600" />}
                   bg="bg-blue-100"
                 />
@@ -170,8 +153,12 @@ export default async function StatistikPage() {
                 />
                 <StatCard
                   label="Kepadatan"
-                  value={wilayah.kepadatan.toLocaleString("id-ID")}
-                  unit="Jiwa/km²"
+                  value={
+                    wilayah.kepadatan > 0
+                      ? wilayah.kepadatan.toLocaleString("id-ID")
+                      : "—"
+                  }
+                  unit={wilayah.kepadatan > 0 || (wilayah.luas_wilayah > 0 && wilayah.total_penduduk > 0) ? "Jiwa/km²" : ""}
                   icon={<Building2 className="w-5 h-5 text-purple-600" />}
                   bg="bg-purple-100"
                 />
@@ -209,9 +196,12 @@ export default async function StatistikPage() {
           )}
         </section>
 
-        {/* ── MATA PENCAHARIAN & AGAMA ── */}
+        {/* ── STATISTIK: PEKERJAAN · AGAMA · GENDER · PENDIDIKAN ── */}
+        {(pekerjaan.length > 0 || agama.length > 0 || gender.length > 0 || pendidikan.length > 0) && (
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Mata Pencaharian (bar chart) */}
+
+          {/* Mata Pencaharian (bar chart) — only shown if data exists */}
+          {pekerjaan.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center">
@@ -226,213 +216,147 @@ export default async function StatistikPage() {
                 </p>
               </div>
             </div>
-
-            {pekerjaan.length > 0 ? (
-              <div className="h-64 flex items-end justify-between gap-2 mt-auto px-2 relative">
-                <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[10px] text-gray-400 w-8">
-                  {[maxPekerjaan, Math.round(maxPekerjaan * 0.66), Math.round(maxPekerjaan * 0.33), 0].map(
-                    (v) => (
-                      <span key={v}>{v.toLocaleString("id-ID")}</span>
-                    )
-                  )}
-                </div>
-                <div className="ml-8 flex-1 flex items-end justify-between gap-2 h-full pb-8 relative border-b border-gray-100">
-                  {pekerjaan.map((d, i) => (
-                    <div
-                      key={i}
-                      className="flex flex-col items-center flex-1 h-full justify-end group"
-                    >
-                      <div
-                        className="relative w-full"
-                        style={{ height: `${(d.nilai / maxPekerjaan) * 100}%` }}
-                      >
-                        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap z-10 pointer-events-none">
-                          {d.nilai.toLocaleString("id-ID")}
-                        </span>
-                        <div className="w-full h-full bg-[#fbbf24] rounded-t-sm group-hover:bg-yellow-400 group-hover:shadow-sm transition-all" />
-                      </div>
-                      <span className="absolute bottom-1 text-[9px] text-gray-500 -rotate-[25deg] origin-top-left transform translate-y-3 translate-x-2 group-hover:text-gray-800 whitespace-nowrap">
-                        {d.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <div className="h-64 flex items-end justify-between gap-2 mt-auto px-2 relative">
+              <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[10px] text-gray-400 w-8">
+                {[maxPekerjaan, Math.round(maxPekerjaan * 0.66), Math.round(maxPekerjaan * 0.33), 0].map(
+                  (v) => (
+                    <span key={v}>{v.toLocaleString("id-ID")}</span>
+                  )
+                )}
               </div>
-            ) : (
-              <EmptyState message="Belum ada data pekerjaan." />
-            )}
+              <div className="ml-8 flex-1 flex items-end justify-between gap-2 h-full pb-8 relative border-b border-gray-100">
+                {pekerjaan.map((d, i) => (
+                  <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
+                    <div className="relative w-full" style={{ height: `${(d.nilai / maxPekerjaan) * 100}%` }}>
+                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] font-semibold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 whitespace-nowrap z-10 pointer-events-none">
+                        {d.nilai.toLocaleString("id-ID")}
+                      </span>
+                      <div className="w-full h-full bg-[#fbbf24] rounded-t-sm group-hover:bg-yellow-400 group-hover:shadow-sm transition-all" />
+                    </div>
+                    <span className="absolute bottom-1 text-[9px] text-gray-500 -rotate-[25deg] origin-top-left transform translate-y-3 translate-x-2 group-hover:text-gray-800 whitespace-nowrap">
+                      {d.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+          )}
 
-          {/* Agama (pie/donut) */}
+          {/* Agama */}
+          {agama.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
                 <Flame className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg leading-tight">
-                  Agama Penduduk
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Komposisi pemeluk agama
-                </p>
+                <h3 className="font-bold text-gray-800 text-lg leading-tight">Agama Penduduk</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Komposisi pemeluk agama</p>
               </div>
             </div>
-
-            {agama.length > 0 ? (
+            {agama.length === 1 ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 py-6">
+                <div className="w-36 h-36 rounded-full flex items-center justify-center" style={{ background: AGAMA_COLORS[0] }}>
+                  <span className="text-white font-bold text-2xl">100%</span>
+                </div>
+                <p className="text-gray-700 font-semibold text-lg">{agama[0].label}</p>
+                <p className="text-gray-400 text-sm">{agama[0].nilai.toLocaleString("id-ID")} jiwa · seluruh penduduk</p>
+              </div>
+            ) : (
               <div className="flex-1 flex flex-col justify-center items-center gap-8 py-4">
-                <div
-                  className="w-48 h-48 rounded-full"
-                  style={{ background: buildConicGradient(agama) }}
-                />
+                <div className="w-48 h-48 rounded-full" style={{ background: buildConicGradient(agama) }} />
                 <div className="w-full space-y-3 mt-4">
                   {agama.map((d, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center text-sm hover:bg-purple-50 rounded-lg px-2 -mx-2 py-1.5 transition-colors duration-150 cursor-default group"
-                    >
+                    <div key={i} className="flex justify-between items-center text-sm hover:bg-purple-50 rounded-lg px-2 -mx-2 py-1.5 transition-colors duration-150 cursor-default group">
                       <div className="flex items-center gap-2">
-                        <span
-                          className="w-3 h-3 rounded-sm flex-shrink-0"
-                          style={{
-                            backgroundColor:
-                              AGAMA_COLORS[i % AGAMA_COLORS.length],
-                          }}
-                        />
+                        <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: AGAMA_COLORS[i % AGAMA_COLORS.length] }} />
                         <span className="text-gray-600 group-hover:text-gray-800">{d.label}</span>
                       </div>
-                      <span className="font-semibold text-gray-800 group-hover:text-purple-700 transition-colors">
-                        {d.nilai.toLocaleString("id-ID")}
-                      </span>
+                      <span className="font-semibold text-gray-800 group-hover:text-purple-700 transition-colors">{d.nilai.toLocaleString("id-ID")}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            ) : (
-              <EmptyState message="Belum ada data agama." />
             )}
           </div>
-        </section>
+          )}
 
-        {/* ── GENDER & PENDIDIKAN ── */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gender (donut) */}
+          {gender.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
                 <Users2 className="w-5 h-5 text-pink-600" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg leading-tight">
-                  Demografi Gender
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Perbandingan Laki-laki &amp; Perempuan
-                </p>
+                <h3 className="font-bold text-gray-800 text-lg leading-tight">Demografi Gender</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Perbandingan Laki-laki &amp; Perempuan</p>
               </div>
             </div>
-
-            {gender.length > 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-10 py-6">
-                <div
-                  className="relative w-48 h-48 rounded-full flex items-center justify-center"
-                  style={{
-                    background: `conic-gradient(#ec4899 0% ${perempuanPct.toFixed(1)}%, #3b82f6 ${perempuanPct.toFixed(1)}% 100%)`,
-                  }}
-                >
-                  <div className="w-24 h-24 bg-white rounded-full flex flex-col items-center justify-center">
-                    <span className="text-xs text-gray-400">Total</span>
-                    <span className="font-bold text-gray-800 text-lg">
-                      {totalGender.toLocaleString("id-ID")}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-full space-y-3">
-                  {gender.map((d, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center text-sm hover:bg-pink-50 rounded-lg px-2 -mx-2 py-1.5 transition-colors duration-150 cursor-default group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-3 h-3 rounded-full flex-shrink-0"
-                          style={{
-                            backgroundColor:
-                              d.label.toLowerCase().includes("perempuan") ||
-                              d.label === "P"
-                                ? "#ec4899"
-                                : "#3b82f6",
-                          }}
-                        />
-                        <span className="text-gray-600 group-hover:text-gray-800">{d.label}</span>
-                      </div>
-                      <span className="font-semibold text-gray-800 group-hover:text-pink-600 transition-colors">
-                        {d.nilai.toLocaleString("id-ID")}
-                        <span className="text-xs text-gray-400 ml-1">
-                          ({totalGender > 0
-                            ? ((d.nilai / totalGender) * 100).toFixed(1)
-                            : 0}
-                          %)
-                        </span>
-                      </span>
-                    </div>
-                  ))}
+            <div className="flex-1 flex flex-col items-center justify-center gap-10 py-6">
+              <div
+                className="relative w-48 h-48 rounded-full flex items-center justify-center"
+                style={{ background: `conic-gradient(#ec4899 0% ${perempuanPct.toFixed(1)}%, #3b82f6 ${perempuanPct.toFixed(1)}% 100%)` }}
+              >
+                <div className="w-24 h-24 bg-white rounded-full flex flex-col items-center justify-center">
+                  <span className="text-xs text-gray-400">Total</span>
+                  <span className="font-bold text-gray-800 text-lg">{totalGender.toLocaleString("id-ID")}</span>
                 </div>
               </div>
-            ) : (
-              <EmptyState message="Belum ada data gender." />
-            )}
+              <div className="w-full space-y-3">
+                {gender.map((d, i) => (
+                  <div key={i} className="flex justify-between items-center text-sm hover:bg-pink-50 rounded-lg px-2 -mx-2 py-1.5 transition-colors duration-150 cursor-default group">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.label.toLowerCase().includes("perempuan") || d.label === "P" ? "#ec4899" : "#3b82f6" }} />
+                      <span className="text-gray-600 group-hover:text-gray-800">{d.label}</span>
+                    </div>
+                    <span className="font-semibold text-gray-800 group-hover:text-pink-600 transition-colors">
+                      {d.nilai.toLocaleString("id-ID")}
+                      <span className="text-xs text-gray-400 ml-1">({totalGender > 0 ? ((d.nilai / totalGender) * 100).toFixed(1) : 0}%)</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+          )}
 
-          {/* Pendidikan (horizontal bars) */}
+          {/* Pendidikan — only shown if data exists */}
+          {pendidikan.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
                 <GraduationCap className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg leading-tight">
-                  Tingkat Pendidikan
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Jenjang pendidikan penduduk
-                </p>
+                <h3 className="font-bold text-gray-800 text-lg leading-tight">Tingkat Pendidikan</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Jenjang pendidikan penduduk</p>
               </div>
             </div>
-
-            {pendidikan.length > 0 ? (
-              <div className="flex-1 flex flex-col justify-end space-y-4 relative pb-6">
-                {pendidikan.map((d, i) => (
-                  <div key={i} className="flex items-center gap-3 text-xs group hover:bg-blue-50 rounded-lg px-2 -mx-2 py-1 transition-colors duration-150">
-                    <div className="w-28 text-right text-gray-600 shrink-0 group-hover:font-semibold group-hover:text-gray-800 transition-all">
-                      {d.label}
-                    </div>
-                    <div className="flex-1">
-                      <div
-                        className="h-6 bg-[#60a5fa] rounded-r-md group-hover:bg-blue-500 group-hover:shadow-sm transition-all"
-                        style={{ width: `${(d.nilai / maxPendidikan) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-gray-500 w-10 text-right shrink-0 group-hover:font-bold group-hover:text-blue-600 transition-all">
-                      {d.nilai.toLocaleString("id-ID")}
-                    </span>
+            <div className="flex-1 flex flex-col justify-end space-y-4 relative pb-6">
+              {pendidikan.map((d, i) => (
+                <div key={i} className="flex items-center gap-3 text-xs group hover:bg-blue-50 rounded-lg px-2 -mx-2 py-1 transition-colors duration-150">
+                  <div className="w-28 text-right text-gray-600 shrink-0 group-hover:font-semibold group-hover:text-gray-800 transition-all">{d.label}</div>
+                  <div className="flex-1">
+                    <div className="h-6 bg-[#60a5fa] rounded-r-md group-hover:bg-blue-500 group-hover:shadow-sm transition-all" style={{ width: `${(d.nilai / maxPendidikan) * 100}%` }} />
                   </div>
-                ))}
-
-                <div className="absolute bottom-0 left-32 right-10 flex border-t border-gray-100 text-[10px] text-gray-400 justify-between pt-1">
-                  <span>0</span>
-                  <span>{Math.round(maxPendidikan * 0.25).toLocaleString("id-ID")}</span>
-                  <span>{Math.round(maxPendidikan * 0.5).toLocaleString("id-ID")}</span>
-                  <span>{Math.round(maxPendidikan * 0.75).toLocaleString("id-ID")}</span>
-                  <span>{maxPendidikan.toLocaleString("id-ID")}</span>
+                  <span className="text-gray-500 w-10 text-right shrink-0 group-hover:font-bold group-hover:text-blue-600 transition-all">{d.nilai.toLocaleString("id-ID")}</span>
                 </div>
+              ))}
+              <div className="absolute bottom-0 left-32 right-10 flex border-t border-gray-100 text-[10px] text-gray-400 justify-between pt-1">
+                <span>0</span>
+                <span>{Math.round(maxPendidikan * 0.25).toLocaleString("id-ID")}</span>
+                <span>{Math.round(maxPendidikan * 0.5).toLocaleString("id-ID")}</span>
+                <span>{Math.round(maxPendidikan * 0.75).toLocaleString("id-ID")}</span>
+                <span>{maxPendidikan.toLocaleString("id-ID")}</span>
               </div>
-            ) : (
-              <EmptyState message="Belum ada data pendidikan." />
-            )}
+            </div>
           </div>
+          )}
+
         </section>
+        )}
       </div>
     </div>
   );
