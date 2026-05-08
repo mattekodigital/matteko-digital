@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRef, useState } from "react"
+import { useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   SaveIcon,
@@ -70,6 +70,11 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
   const fotoInputRef = useRef<HTMLInputElement>(null)
   const [fotoPreview, setFotoPreview] = useState<string>(initialData?.foto_kepala_dusun ?? "")
   const [uploadingFoto, setUploadingFoto] = useState(false)
+  // fotoUrlInput: hanya untuk input URL manual — tidak pernah diisi path lokal
+  const initialFotoIsUrl = /^https?:\/\//i.test(initialData?.foto_kepala_dusun ?? "")
+  const [fotoUrlInput, setFotoUrlInput] = useState<string>(initialFotoIsUrl ? (initialData?.foto_kepala_dusun ?? "") : "")
+  const [checkingFotoUrl, setCheckingFotoUrl] = useState(false)
+  const [fotoUrlError, setFotoUrlError] = useState<string>("")
 
   const showToast = (type: "success" | "error", message: string) => {
     setToast({ type, message })
@@ -83,6 +88,8 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
   const handleReset = () => {
     setFormData(toFormData(initialData))
     setFotoPreview(initialData?.foto_kepala_dusun ?? "")
+    setFotoUrlInput(initialFotoIsUrl ? (initialData?.foto_kepala_dusun ?? "") : "")
+    setFotoUrlError("")
   }
 
   // ── Foto Kepala Dusun: Upload ke storage lokal ──────────────────────────
@@ -129,8 +136,75 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
   const removeFoto = () => {
     setFotoPreview("")
     update("foto_kepala_dusun", "")
+    setFotoUrlInput("")
+    setFotoUrlError("")
     if (fotoInputRef.current) fotoInputRef.current.value = ""
   }
+
+  // ── Verifikasi URL foto (sama dengan pola di InformasiDesaForm) ─────────────
+  const verifyFotoUrl = useCallback((url: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const img = new window.Image()
+      img.onload = () => resolve()
+      img.onerror = () => reject(new Error("Gambar dari URL tidak dapat dimuat"))
+      img.src = url
+    })
+  }, [])
+
+  const applyFotoUrl = useCallback(
+    async (rawValue: string) => {
+      const value = rawValue.trim()
+      setFotoUrlInput(value)
+
+      if (!value) {
+        // Input dikosongkan — hapus preview & payload jika sebelumnya dari URL
+        if (/^https?:\/\//i.test(fotoPreview)) {
+          setFotoPreview("")
+          update("foto_kepala_dusun", "")
+        }
+        setFotoUrlError("")
+        return
+      }
+
+      // Validasi format URL
+      const isHttp = (() => {
+        try {
+          const u = new URL(value)
+          return u.protocol === "http:" || u.protocol === "https:"
+        } catch {
+          return false
+        }
+      })()
+
+      if (!isHttp) {
+        setFotoUrlError("Gunakan URL lengkap yang diawali http:// atau https://")
+        if (/^https?:\/\//i.test(fotoPreview)) {
+          setFotoPreview("")
+          update("foto_kepala_dusun", "")
+        }
+        return
+      }
+
+      setCheckingFotoUrl(true)
+      try {
+        await verifyFotoUrl(value)
+        setFotoPreview(value)
+        update("foto_kepala_dusun", value)
+        setFotoUrlError("")
+        showToast("success", "URL foto berhasil diverifikasi")
+      } catch {
+        setFotoUrlError("Gambar dari URL tidak dapat dimuat")
+        if (/^https?:\/\//i.test(fotoPreview)) {
+          setFotoPreview("")
+          update("foto_kepala_dusun", "")
+        }
+      } finally {
+        setCheckingFotoUrl(false)
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fotoPreview, update, verifyFotoUrl]
+  )
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -377,14 +451,40 @@ export default function ProfilDusunForm({ initialData }: ProfilDusunFormProps) {
                     <input
                       id="foto_kepala_dusun"
                       type="url"
-                      value={formData.foto_kepala_dusun || ""}
+                      value={fotoUrlInput}
                       onChange={(e) => {
-                        update("foto_kepala_dusun", e.target.value)
-                        setFotoPreview(e.target.value)
+                        const next = e.target.value
+                        setFotoUrlInput(next)
+                        setFotoUrlError("")
+                        // Jika dikosongkan & preview sebelumnya dari URL, hapus
+                        if (!next.trim() && /^https?:\/\//i.test(fotoPreview)) {
+                          setFotoPreview("")
+                          update("foto_kepala_dusun", "")
+                        }
                       }}
+                      onBlur={() => void applyFotoUrl(fotoUrlInput)}
                       placeholder="https://..."
-                      className="w-full bg-slate-900/50 border border-slate-600/50 rounded-lg px-3 py-2 text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-green-500/30 transition-all"
+                      className={`w-full bg-slate-900/50 border rounded-lg px-3 py-2 text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:ring-1 transition-all ${
+                        fotoUrlError
+                          ? "border-red-500/70 focus:ring-red-500/30"
+                          : "border-slate-600/50 focus:ring-green-500/30"
+                      }`}
                     />
+                    <p className="mt-1.5 text-[10px] text-slate-500">
+                      Hanya dipakai jika ingin memakai gambar online. Jika upload dari komputer, biarkan kosong.
+                    </p>
+                    {fotoUrlError && (
+                      <p className="text-red-400 text-[11px] mt-1.5 flex items-center gap-1">
+                        <AlertCircleIcon className="size-3" />
+                        {fotoUrlError}
+                      </p>
+                    )}
+                    {checkingFotoUrl && (
+                      <p className="text-blue-400 text-[11px] mt-1.5 flex items-center gap-1">
+                        <Loader2Icon className="size-3 animate-spin" />
+                        Memeriksa URL gambar...
+                      </p>
+                    )}
                   </div>
                 </div>
                 {/* Pesan Sambutan */}

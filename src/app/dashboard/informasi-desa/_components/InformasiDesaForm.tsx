@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useCallback } from "react"
+import React, { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeftIcon,
@@ -22,6 +22,7 @@ import type { InformasiDesa } from "@/lib/types"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Kategori = InformasiDesa["kategori"]
+type ImageSource = "local" | "url" | null
 
 interface FormData {
   kategori: Kategori
@@ -69,23 +70,43 @@ function formatPreviewDate(iso: string): string {
   }
 }
 
+function getInitialImageSource(imageUrl: string | null | undefined): ImageSource {
+  if (!imageUrl) return null
+  return /^https?:\/\//i.test(imageUrl) ? "url" : "local"
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === "http:" || url.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function InformasiDesaForm({ mode, initialData }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const localPreviewUrlRef = useRef<string | null>(null)
+  const initialImageUrl = initialData?.image_url ?? ""
+  const initialImageSource = getInitialImageSource(initialImageUrl)
 
   const [form, setForm] = useState<FormData>({
     kategori: initialData?.kategori ?? "berita",
     judul: initialData?.judul ?? "",
     konten: initialData?.konten ?? "",
-    image_url: initialData?.image_url ?? "",
+    image_url: initialImageUrl,
     penulis: initialData?.penulis ?? "Administrator Dusun",
     tanggal_kegiatan: formatDatetimeLocal(initialData?.tanggal_kegiatan ?? null),
     lokasi: initialData?.lokasi ?? "",
   })
 
-  const [imagePreview, setImagePreview] = useState<string>(initialData?.image_url ?? "")
+  const [imagePreview, setImagePreview] = useState<string>(initialImageUrl)
+  const [imageSource, setImageSource] = useState<ImageSource>(initialImageSource)
+  const [imageUrlInput, setImageUrlInput] = useState<string>(initialImageSource === "url" ? initialImageUrl : "")
   const [uploading, setUploading] = useState(false)
+  const [checkingImageUrl, setCheckingImageUrl] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
@@ -101,11 +122,80 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
     setErrors((prev) => ({ ...prev, [key]: undefined }))
   }, [])
 
+  const revokeLocalPreviewUrl = useCallback(() => {
+    if (localPreviewUrlRef.current) {
+      URL.revokeObjectURL(localPreviewUrlRef.current)
+      localPreviewUrlRef.current = null
+    }
+  }, [])
+
+  useEffect(() => revokeLocalPreviewUrl, [revokeLocalPreviewUrl])
+
+  const verifyRemoteImage = useCallback((url: string) => {
+    return new Promise<void>((resolve, reject) => {
+      const img = new window.Image()
+      img.onload = () => resolve()
+      img.onerror = () => reject(new Error("Gambar dari URL tidak dapat dimuat"))
+      img.src = url
+    })
+  }, [])
+
+  const applyImageUrl = useCallback(
+    async (rawValue: string) => {
+      const value = rawValue.trim()
+      setImageUrlInput(value)
+
+      if (!value) {
+        if (imageSource === "url") {
+          setImageSource(null)
+          setImagePreview("")
+          update("image_url", "")
+        }
+        return true
+      }
+
+      if (!isHttpUrl(value)) {
+        setErrors((prev) => ({ ...prev, image_url: "Gunakan URL lengkap yang diawali http:// atau https://" }))
+        if (imageSource === "url") {
+          setImagePreview("")
+          update("image_url", "")
+        }
+        return false
+      }
+
+      setCheckingImageUrl(true)
+      try {
+        await verifyRemoteImage(value)
+        revokeLocalPreviewUrl()
+        setImageSource("url")
+        setImagePreview(value)
+        update("image_url", value)
+        return true
+      } catch (err) {
+        setErrors((prev) => ({
+          ...prev,
+          image_url: err instanceof Error ? err.message : "Gambar dari URL tidak dapat dimuat",
+        }))
+        if (imageSource === "url") {
+          setImagePreview("")
+          update("image_url", "")
+        }
+        return false
+      } finally {
+        setCheckingImageUrl(false)
+      }
+    },
+    [imageSource, revokeLocalPreviewUrl, update, verifyRemoteImage]
+  )
+
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {}
     if (!form.judul.trim()) newErrors.judul = "Judul wajib diisi"
     if (!form.konten.trim()) newErrors.konten = "Konten wajib diisi"
     if (!form.penulis.trim()) newErrors.penulis = "Penulis wajib diisi"
+    if (imageUrlInput.trim() && (!form.image_url || imageSource !== "url")) {
+      newErrors.image_url = "URL gambar belum valid. Pastikan gambar berhasil dimuat."
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -116,8 +206,14 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
     if (!file) return
 
     // Local preview immediately
+    revokeLocalPreviewUrl()
     const objectUrl = URL.createObjectURL(file)
+    localPreviewUrlRef.current = objectUrl
+    setImageSource("local")
+    setImageUrlInput("")
+    update("image_url", "")
     setImagePreview(objectUrl)
+    setErrors((prev) => ({ ...prev, image_url: undefined }))
 
     setUploading(true)
     try {
@@ -137,10 +233,16 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
         throw new Error(result.error ?? "Upload gagal")
       }
 
+      revokeLocalPreviewUrl()
       update("image_url", result.url)
       setImagePreview(result.url)
       showToast("success", "Gambar berhasil diunggah")
     } catch (err: unknown) {
+      update("image_url", "")
+      setErrors((prev) => ({
+        ...prev,
+        image_url: "Upload gambar lokal gagal. Ulangi unggah atau hapus gambar ini.",
+      }))
       showToast("error", `Gagal mengunggah gambar: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setUploading(false)
@@ -148,7 +250,10 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
   }
 
   const removeImage = () => {
+    revokeLocalPreviewUrl()
+    setImageSource(null)
     setImagePreview("")
+    setImageUrlInput("")
     update("image_url", "")
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
@@ -156,6 +261,10 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (imageUrlInput.trim()) {
+      const isValidImageUrl = await applyImageUrl(imageUrlInput)
+      if (!isValidImageUrl) return
+    }
     if (!validate()) return
     setSubmitting(true)
 
@@ -181,8 +290,8 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
       }
       setTimeout(() => router.push("/dashboard/informasi-desa"), 1200)
     } catch (err: unknown) {
-      const errorMessage = err && typeof err === 'object' && 'message' in err 
-        ? String(err.message) 
+      const errorMessage = err && typeof err === 'object' && 'message' in err
+        ? String(err.message)
         : err instanceof Error ? err.message : "Unknown error"
       showToast("error", `Gagal menyimpan: ${errorMessage}`)
     } finally {
@@ -198,11 +307,10 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border text-sm font-medium transition-all duration-300 ${
-            toast.type === "success"
-              ? "bg-green-900/90 border-green-500/40 text-green-200"
-              : "bg-red-900/90 border-red-500/40 text-red-200"
-          }`}
+          className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl border text-sm font-medium transition-all duration-300 ${toast.type === "success"
+            ? "bg-green-900/90 border-green-500/40 text-green-200"
+            : "bg-red-900/90 border-red-500/40 text-red-200"
+            }`}
         >
           {toast.type === "success" ? <CheckCircle2Icon className="size-4 shrink-0" /> : <AlertCircleIcon className="size-4 shrink-0" />}
           {toast.message}
@@ -261,11 +369,10 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
                     key={k.value}
                     type="button"
                     onClick={() => update("kategori", k.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                      form.kategori === k.value
-                        ? k.color + " scale-105 shadow-sm"
-                        : "bg-slate-700/50 text-slate-400 border-slate-600/50 hover:bg-slate-700"
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${form.kategori === k.value
+                      ? k.color + " scale-105 shadow-sm"
+                      : "bg-slate-700/50 text-slate-400 border-slate-600/50 hover:bg-slate-700"
+                      }`}
                   >
                     {k.label}
                   </button>
@@ -284,9 +391,8 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
                 value={form.judul}
                 onChange={(e) => update("judul", e.target.value)}
                 placeholder="Tulis judul yang menarik..."
-                className={`w-full bg-slate-900/50 border rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all ${
-                  errors.judul ? "border-red-500/70 focus:ring-red-500/30" : "border-slate-600/50 focus:ring-blue-500/30 focus:border-blue-500/50"
-                }`}
+                className={`w-full bg-slate-900/50 border rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all ${errors.judul ? "border-red-500/70 focus:ring-red-500/30" : "border-slate-600/50 focus:ring-blue-500/30 focus:border-blue-500/50"
+                  }`}
               />
               {errors.judul && <p className="text-red-400 text-xs mt-2 flex items-center gap-1"><AlertCircleIcon className="size-3" />{errors.judul}</p>}
             </div>
@@ -302,9 +408,8 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
                 value={form.konten}
                 onChange={(e) => update("konten", e.target.value)}
                 placeholder="Tulis konten lengkap di sini..."
-                className={`w-full bg-slate-900/50 border rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all resize-none leading-relaxed ${
-                  errors.konten ? "border-red-500/70 focus:ring-red-500/30" : "border-slate-600/50 focus:ring-blue-500/30 focus:border-blue-500/50"
-                }`}
+                className={`w-full bg-slate-900/50 border rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all resize-none leading-relaxed ${errors.konten ? "border-red-500/70 focus:ring-red-500/30" : "border-slate-600/50 focus:ring-blue-500/30 focus:border-blue-500/50"
+                  }`}
               />
               <div className="flex justify-between mt-2">
                 {errors.konten && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircleIcon className="size-3" />{errors.konten}</p>}
@@ -372,14 +477,46 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
                 <p className="text-xs text-slate-500 mb-1.5">Atau tempel URL gambar langsung:</p>
                 <input
                   type="url"
-                  value={form.image_urlf}
+                  value={imageUrlInput}
                   onChange={(e) => {
-                    update("image_url", e.target.value)
-                    setImagePreview(e.target.value)
+                    const nextValue = e.target.value
+                    setImageUrlInput(nextValue)
+                    setErrors((prev) => ({ ...prev, image_url: undefined }))
+
+                    if (!nextValue.trim() && imageSource === "url") {
+                      setImageSource(null)
+                      setImagePreview("")
+                      update("image_url", "")
+                      return
+                    }
+
+                    if (imageSource === "url") {
+                      setImagePreview("")
+                      update("image_url", "")
+                    }
                   }}
+                  onBlur={() => void applyImageUrl(imageUrlInput)}
                   placeholder="https://..."
-                  className="w-full bg-slate-900/50 border border-slate-600/50 rounded-lg px-3 py-2 text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
+                  className={`w-full bg-slate-900/50 border rounded-lg px-3 py-2 text-xs text-slate-300 placeholder:text-slate-500 focus:outline-none focus:ring-1 transition-all ${errors.image_url
+                    ? "border-red-500/70 focus:ring-red-500/30"
+                    : "border-slate-600/50 focus:ring-blue-500/30"
+                    }`}
                 />
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  Kolom ini hanya dipakai jika ingin memakai gambar online. Jika upload dari komputer, biarkan kosong.
+                </p>
+                {errors.image_url && (
+                  <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
+                    <AlertCircleIcon className="size-3" />
+                    {errors.image_url}
+                  </p>
+                )}
+                {checkingImageUrl && (
+                  <p className="text-blue-400 text-xs mt-2 flex items-center gap-1">
+                    <Loader2Icon className="size-3 animate-spin" />
+                    Memeriksa URL gambar...
+                  </p>
+                )}
               </div>
             </div>
 
@@ -398,9 +535,8 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
                   value={form.penulis}
                   onChange={(e) => update("penulis", e.target.value)}
                   placeholder="Nama penulis"
-                  className={`w-full bg-slate-900/50 border rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all ${
-                    errors.penulis ? "border-red-500/70 focus:ring-red-500/30" : "border-slate-600/50 focus:ring-blue-500/30"
-                  }`}
+                  className={`w-full bg-slate-900/50 border rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all ${errors.penulis ? "border-red-500/70 focus:ring-red-500/30" : "border-slate-600/50 focus:ring-blue-500/30"
+                    }`}
                 />
                 {errors.penulis && <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1"><AlertCircleIcon className="size-3" />{errors.penulis}</p>}
               </div>
@@ -444,11 +580,11 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
 
               <button
                 type="submit"
-                disabled={submitting || uploading}
+                disabled={submitting || uploading || checkingImageUrl}
                 className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-xl transition-all text-sm"
               >
-                {submitting ? (
-                  <><Loader2Icon className="size-4 animate-spin" /> Menyimpan...</>
+                {submitting || checkingImageUrl ? (
+                  <><Loader2Icon className="size-4 animate-spin" /> {checkingImageUrl ? "Memeriksa URL..." : "Menyimpan..."}</>
                 ) : (
                   <><SendIcon className="size-4" /> {mode === "create" ? "Publikasikan" : "Simpan Perubahan"}</>
                 )}
