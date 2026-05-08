@@ -1,16 +1,27 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
+
 const supabaseImageHost = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
   : null;
 
-const remotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [
+const serverHost = "103.253.213.252";
+
+const remotePatterns: NonNullable<
+  NextConfig["images"]
+>["remotePatterns"] = [
   {
     protocol: "https",
     hostname: "cdn-icons-png.flaticon.com",
     port: "",
     pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: serverHost,
+    port: "",
+    pathname: "/uploads/**",
   },
 ];
 
@@ -31,36 +42,47 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
           {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains; preload',
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
           {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin-allow-popups',
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains; preload",
           },
           {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
           },
           {
-            key: 'Content-Security-Policy',
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+              `script-src 'self' 'unsafe-inline'${
+                isDev ? " 'unsafe-eval'" : ""
+              }`,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              ["img-src 'self' data: blob: https://cdn-icons-png.flaticon.com", supabaseImageHost ? `https://${supabaseImageHost}` : null]
+              [
+                "img-src 'self' data: blob: https://cdn-icons-png.flaticon.com",
+                `https://${serverHost}`,
+                supabaseImageHost
+                  ? `https://${supabaseImageHost}`
+                  : null,
+              ]
                 .filter(Boolean)
                 .join(" "),
               "font-src 'self' https://fonts.gstatic.com",
               "connect-src 'self'",
               "frame-src https://maps.google.com https://www.google.com",
-            ].join('; '),
+            ].join("; "),
           },
         ],
       },

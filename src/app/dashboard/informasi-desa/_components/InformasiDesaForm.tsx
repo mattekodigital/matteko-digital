@@ -372,7 +372,7 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
                 <p className="text-xs text-slate-500 mb-1.5">Atau tempel URL gambar langsung:</p>
                 <input
                   type="url"
-                  value={form.image_url}
+                  value={form.image_urlf}
                   onChange={(e) => {
                     update("image_url", e.target.value)
                     setImagePreview(e.target.value)
