@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { UsersRound, Earth, BookOpen, MapPin, Mail, Phone } from "lucide-react";
 import { getProfilDusun } from "@/lib/data/profil";
-import { createClient } from "@/lib/supabase/server";
+import { getLatestInfoWilayah } from "@/lib/data/statistik";
 import type { InfoWilayah } from "@/lib/types";
 import {
   Breadcrumb,
@@ -15,24 +15,22 @@ import {
 
 
 export const metadata: Metadata = {
-  title: 'Profil & Identitas Desa',
-  description: 'Profil lengkap Dusun Matteko — visi, misi, sejarah dusun, dan informasi kontak pemerintahan desa.',
+  title: 'Profil & Identitas Dusun',
+  description: 'Profil lengkap Dusun Matteko — sejarah dusun, dan informasi kontak pemerintahan dusun.',
   openGraph: {
-    title: 'Profil & Identitas Desa Matteko',
-    description: 'Profil lengkap Dusun Matteko — visi, misi, sejarah dusun, dan informasi kontak pemerintahan desa.',
+    title: 'Profil & Identitas Dusun Matteko',
+    description: 'Profil lengkap Dusun Matteko — sejarah dusun, dan informasi kontak pemerintahan dusun.',
   },
 };
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export default async function ProfilPage() {
-  const [profil, wilayahRes] = await Promise.all([
+  const [profil, wilayah] = await Promise.all([
     getProfilDusun(),
-    createClient().then((sb) =>
-      sb.from("info_wilayah").select("total_penduduk, luas_wilayah").single()
-    ),
+    getLatestInfoWilayah(),
   ]);
-  const wilayah = wilayahRes.data as Pick<InfoWilayah, "total_penduduk" | "luas_wilayah"> | null;
+  const wilayahRingkas = wilayah as Pick<InfoWilayah, "total_penduduk" | "luas_wilayah"> | null;
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -41,7 +39,7 @@ export default async function ProfilPage() {
       <div className="relative h-72 w-full overflow-hidden">
         <Image
           src="/hero-dusun.webp"
-          alt="Background Desa"
+          alt="Background Dusun"
           fill
           className="object-cover brightness-50"
           priority
@@ -79,8 +77,8 @@ export default async function ProfilPage() {
           <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-5 text-white w-36 sm:w-44 shadow-xl hover:shadow-blue-400/40 hover:-translate-y-0.5 transition-all duration-300">
             <UsersRound className="w-6 h-6 mb-2 opacity-90" />
             <p className="text-3xl font-bold leading-tight">
-              {wilayah?.total_penduduk
-                ? wilayah.total_penduduk.toLocaleString("id-ID")
+              {wilayahRingkas?.total_penduduk
+                ? wilayahRingkas.total_penduduk.toLocaleString("id-ID")
                 : "—"}
             </p>
             <p className="text-sm mt-1 opacity-90">Penduduk</p>
@@ -89,11 +87,11 @@ export default async function ProfilPage() {
           <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-xl p-5 text-white w-36 sm:w-44 shadow-xl hover:shadow-green-400/40 hover:-translate-y-0.5 transition-all duration-300">
             <Earth className="w-6 h-6 mb-2 opacity-90" />
             <p className="text-3xl font-bold leading-tight">
-              {wilayah?.luas_wilayah
-                ? Number(wilayah.luas_wilayah).toLocaleString("id-ID", { maximumFractionDigits: 2 })
+              {wilayahRingkas?.luas_wilayah
+                ? Number(wilayahRingkas.luas_wilayah).toLocaleString("id-ID", { maximumFractionDigits: 2 })
                 : "—"}
             </p>
-            <p className="text-sm mt-1 opacity-90">Km² Luas</p>
+            <p className="text-sm mt-1 opacity-90">Ha Luas</p>
           </div>
         </div>
       </div>
@@ -128,8 +126,8 @@ export default async function ProfilPage() {
                 <div className="flex flex-col items-center text-center mb-5">
                   <div className="w-20 h-20 relative mb-3">
                     <Image
-                      src={profil?.url_logo || "/logo.png"}
-                      alt={`Logo ${profil?.nama_dusun || 'Desa'}`}
+                      src={profil?.url_logo || "/logo.webp"}
+                      alt={`Logo ${profil?.nama_dusun || 'Dusun'}`}
                       fill
                       sizes="80px"
                       className="object-contain"

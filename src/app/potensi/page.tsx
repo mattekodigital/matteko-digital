@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, Leaf } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import type { InformasiDesa } from "@/lib/types";
+import { Leaf } from "lucide-react";
+import { listInformasiByKategoriIn } from "@/lib/data/informasi";
 import PotensiClientFilter from "./_components/PotensiClientFilter";
 import {
   Breadcrumb,
@@ -15,26 +13,18 @@ import {
 } from "@/components/ui/breadcrumb";
 
 export const metadata: Metadata = {
-  title: 'Potensi Desa',
+  title: 'Potensi Dusun',
   description: 'Jelajahi potensi Dusun Matteko — wisata alam, UMKM lokal, dan sektor pertanian unggulan.',
   openGraph: {
-    title: 'Potensi Desa Matteko',
+    title: 'Potensi Dusun Matteko',
     description: 'Jelajahi potensi Dusun Matteko — wisata alam, UMKM lokal, dan sektor pertanian unggulan.',
   },
 };
 
-export const revalidate = 600;
+export const dynamic = "force-dynamic";
 
 export default async function PotensiPage() {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("informasi_dusun")
-    .select("id, judul, konten, image_url, kategori, lokasi, penulis, tanggal_kegiatan, created_at")
-    .in("kategori", ["wisata", "umkm", "pertanian"])
-    .order("created_at", { ascending: false });
-
-  const potensiList: InformasiDesa[] = data ?? [];
+  const potensiList = await listInformasiByKategoriIn(["wisata", "umkm", "pertanian"]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -75,12 +65,6 @@ export default async function PotensiPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 pb-20">
-        {error && (
-          <div className="text-center py-8 text-red-500 text-sm">
-            Gagal memuat data potensi. Silakan coba lagi.
-          </div>
-        )}
-
         {/* Client component handles filter + grid rendering */}
         <PotensiClientFilter items={potensiList} />
       </div>

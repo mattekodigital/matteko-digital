@@ -20,19 +20,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { createClient } from "@/lib/supabase/server";
-import type { InformasiDesa } from "@/lib/types";
+import { listInformasiByKategori } from "@/lib/data/informasi";
 
 export const metadata: Metadata = {
-  title: 'Pusat Informasi Desa',
+  title: 'Pusat Informasi Dusun',
   description: 'Pusat informasi Dusun Matteko — berita terkini, pengumuman resmi, agenda kegiatan, dan galeri foto desa.',
   openGraph: {
-    title: 'Pusat Informasi Desa Matteko',
+    title: 'Pusat Informasi Dusun Matteko',
     description: 'Berita terkini, pengumuman resmi, agenda kegiatan, dan galeri foto Dusun Matteko.',
   },
 };
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 function formatDate(d: string | null) {
   if (!d) return "-";
@@ -91,40 +90,17 @@ const statusDot: Record<string, string> = {
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function InformasiPage() {
-  const supabase = await createClient();
-
   // Fetch top 3 per category in parallel
-  const [beritaRes, pengumumanRes, agendaRes, galeriRes] = await Promise.all([
-    supabase
-      .from("informasi_dusun")
-      .select("id, judul, konten, image_url, penulis, tanggal_kegiatan, created_at, kategori, lokasi")
-      .eq("kategori", "berita")
-      .order("created_at", { ascending: false })
-      .limit(3),
-    supabase
-      .from("informasi_dusun")
-      .select("id, judul, konten, image_url, penulis, tanggal_kegiatan, created_at, kategori, lokasi")
-      .eq("kategori", "pengumuman")
-      .order("created_at", { ascending: false })
-      .limit(3),
-    supabase
-      .from("informasi_dusun")
-      .select("id, judul, konten, penulis, tanggal_kegiatan, lokasi, created_at, kategori, image_url")
-      .eq("kategori", "agenda")
-      .order("tanggal_kegiatan", { ascending: true })
-      .limit(3),
-    supabase
-      .from("informasi_dusun")
-      .select("id, judul, konten, image_url, penulis, tanggal_kegiatan, lokasi, created_at, kategori")
-      .eq("kategori", "galeri")
-      .order("created_at", { ascending: false })
-      .limit(3),
+  const [beritaList, pengumumanList, agendaList, galeriList] = await Promise.all([
+    listInformasiByKategori("berita", { limit: 3 }),
+    listInformasiByKategori("pengumuman", { limit: 3 }),
+    listInformasiByKategori("agenda", {
+      limit: 3,
+      orderBy: "tanggal_kegiatan",
+      ascending: true,
+    }),
+    listInformasiByKategori("galeri", { limit: 3 }),
   ]);
-
-  const beritaList: InformasiDesa[] = beritaRes.data ?? [];
-  const pengumumanList: InformasiDesa[] = pengumumanRes.data ?? [];
-  const agendaList: InformasiDesa[] = agendaRes.data ?? [];
-  const galeriList: InformasiDesa[] = galeriRes.data ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -173,7 +149,7 @@ export default async function InformasiPage() {
           <div className="flex justify-between items-end mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Berita Terkini</h2>
-              <p className="text-gray-500 text-sm mt-1">Berita dan artikel terbaru seputar desa.</p>
+              <p className="text-gray-500 text-sm mt-1">Berita dan artikel terbaru seputar dusun.</p>
             </div>
             <Link
               href="/informasi/berita"
@@ -191,9 +167,10 @@ export default async function InformasiPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {beritaList.map((item) => (
-                <div
+                <Link
                   key={item.id}
-                  className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex flex-col hover:shadow-md transition-shadow group"
+                  href={`/informasi/berita/${item.id}`}
+                  className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex flex-col hover:shadow-md transition-shadow group cursor-pointer"
                 >
                   <div className="relative h-48 w-full bg-gray-200 overflow-hidden">
                     <Image
@@ -225,16 +202,11 @@ export default async function InformasiPage() {
                     <p className="text-gray-500 text-sm line-clamp-3 mb-4">
                       {item.konten}
                     </p>
-                    <div className="mt-auto">
-                      <Link
-                        href={`/informasi/berita/${item.id}`}
-                        className="text-blue-600 font-semibold text-sm flex items-center gap-1 hover:underline"
-                      >
-                        Baca Selengkapnya <ArrowRight className="w-4 h-4" />
-                      </Link>
+                    <div className="mt-auto text-blue-600 font-semibold text-sm flex items-center gap-1 group-hover:underline">
+                      Baca Selengkapnya <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -245,7 +217,7 @@ export default async function InformasiPage() {
           <div className="flex justify-between items-end mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Pengumuman</h2>
-              <p className="text-gray-500 text-sm mt-1">Informasi penting untuk warga desa.</p>
+              <p className="text-gray-500 text-sm mt-1">Informasi penting untuk warga dusun.</p>
             </div>
             <Link
               href="/informasi/pengumuman"
@@ -265,9 +237,10 @@ export default async function InformasiPage() {
               {pengumumanList.map((item) => {
                 const displayDate = item.tanggal_kegiatan ?? item.created_at;
                 return (
-                  <div
+                  <Link
                     key={item.id}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex gap-5 items-start hover:shadow-md transition-shadow"
+                    href={`/informasi/pengumuman/${item.id}`}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex gap-5 items-start hover:shadow-md transition-shadow group cursor-pointer"
                   >
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex flex-col items-center justify-center min-w-[80px] text-blue-600 flex-shrink-0">
                       <span className="text-2xl font-bold leading-none">{getDay(displayDate)}</span>
@@ -286,14 +259,11 @@ export default async function InformasiPage() {
                       <p className="text-gray-500 text-sm line-clamp-2 mb-3">
                         {item.konten.slice(0, 160)}...
                       </p>
-                      <Link
-                        href={`/informasi/pengumuman/${item.id}`}
-                        className="text-blue-600 font-semibold text-sm flex items-center gap-1 hover:underline w-fit"
-                      >
+                      <span className="text-blue-600 font-semibold text-sm flex items-center gap-1 group-hover:underline w-fit">
                         Baca Detail <ArrowRight className="w-4 h-4" />
-                      </Link>
+                      </span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -305,7 +275,7 @@ export default async function InformasiPage() {
           <div className="flex justify-between items-end mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Agenda Kegiatan</h2>
-              <p className="text-gray-500 text-sm mt-1">Jadwal kegiatan yang akan datang di desa.</p>
+              <p className="text-gray-500 text-sm mt-1">Jadwal kegiatan yang akan datang di dusun.</p>
             </div>
             <Link
               href="/informasi/agenda"
@@ -326,9 +296,10 @@ export default async function InformasiPage() {
                 const { day, month, dayName } = getDateParts(item.tanggal_kegiatan);
                 const status = getStatus(item.tanggal_kegiatan);
                 return (
-                  <div
+                  <Link
                     key={item.id}
-                    className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex flex-col hover:shadow-md transition-shadow"
+                    href={`/informasi/agenda/${item.id}`}
+                    className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex flex-col hover:shadow-md transition-shadow group cursor-pointer"
                   >
                     <div className="bg-[#108c64] text-white p-5 flex justify-between items-start">
                       <div>
@@ -361,15 +332,12 @@ export default async function InformasiPage() {
                           <span className={`w-1.5 h-1.5 rounded-full ${statusDot[status]}`} />
                           {status}
                         </span>
-                        <Link
-                          href={`/informasi/agenda/${item.id}`}
-                          className="text-[#108c64] font-semibold text-sm flex items-center gap-1 hover:underline"
-                        >
+                        <span className="text-[#108c64] font-semibold text-sm flex items-center gap-1 group-hover:underline">
                           Selengkapnya <ArrowRight className="w-4 h-4" />
-                        </Link>
+                        </span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -380,8 +348,8 @@ export default async function InformasiPage() {
         <section>
           <div className="flex justify-between items-end mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800">Galeri Desa</h2>
-              <p className="text-gray-500 text-sm mt-1">Dokumentasi foto dan video kegiatan desa.</p>
+              <h2 className="text-2xl font-bold text-gray-800">Galeri Dusun</h2>
+              <p className="text-gray-500 text-sm mt-1">Dokumentasi foto kegiatan dusun.</p>
             </div>
             <Link
               href="/informasi/galeri"

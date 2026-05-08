@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
 import { getProfilDusun } from "@/lib/data/profil";
-import type { InformasiDesa } from "@/lib/types";
+import { listInformasiByKategori, listInformasiByKategoriIn } from "@/lib/data/informasi";
 import HomeClient from "./_components/HomeClient";
 
 export const metadata: Metadata = {
@@ -15,35 +14,14 @@ export const metadata: Metadata = {
   },
 };
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const supabase = await createClient();
-
-  const [profil, beritaData, potensiData] = await Promise.all([
+  const [profil, beritaList, potensiList] = await Promise.all([
     getProfilDusun(),
-    supabase
-      .from("informasi_dusun")
-      .select(
-        "id, judul, konten, image_url, penulis, tanggal_kegiatan, created_at, kategori, lokasi"
-      )
-      .eq("kategori", "berita")
-      .order("created_at", { ascending: false })
-      .limit(3)
-      .then((r) => r.data),
-    supabase
-      .from("informasi_dusun")
-      .select(
-        "id, judul, konten, image_url, kategori, lokasi, created_at, penulis, tanggal_kegiatan"
-      )
-      .in("kategori", ["wisata", "umkm", "pertanian"])
-      .order("created_at", { ascending: false })
-      .limit(3)
-      .then((r) => r.data),
+    listInformasiByKategori("berita", { limit: 3 }),
+    listInformasiByKategoriIn(["wisata", "umkm", "pertanian"], { limit: 3 }),
   ]);
-
-  const beritaList: InformasiDesa[] = beritaData ?? [];
-  const potensiList: InformasiDesa[] = potensiData ?? [];
 
   return (
     <HomeClient

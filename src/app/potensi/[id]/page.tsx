@@ -9,7 +9,10 @@ import {
   Calendar,
   Tag,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getInformasiByIdAndKategoriIn,
+  listRelatedInformasi,
+} from "@/lib/data/informasi";
 import type { InformasiDesa } from "@/lib/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -42,32 +45,15 @@ export default async function PotensiDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const item = await getInformasiByIdAndKategoriIn(id, ["wisata", "umkm", "pertanian"]);
 
-  // Fetch item utama
-  const { data: item, error } = await supabase
-    .from("informasi_dusun")
-    .select("*")
-    .eq("id", id)
-    .in("kategori", ["wisata", "umkm", "pertanian"])
-    .single();
-
-  if (error || !item) {
+  if (!item) {
     notFound();
   }
 
   const potensi = item as InformasiDesa;
 
-  // Fetch item terkait (kategori sama, berbeda id)
-  const { data: relatedData } = await supabase
-    .from("informasi_dusun")
-    .select("id, judul, konten, image_url, kategori, lokasi, penulis, tanggal_kegiatan, created_at")
-    .eq("kategori", potensi.kategori)
-    .neq("id", id)
-    .order("created_at", { ascending: false })
-    .limit(3);
-
-  const relatedList: InformasiDesa[] = relatedData ?? [];
+  const relatedList = await listRelatedInformasi(potensi.kategori, id, { limit: 3 });
 
   const badgeColor = CATEGORY_COLORS[potensi.kategori] ?? "bg-gray-400";
   const categoryLabel = CATEGORY_LABELS[potensi.kategori] ?? potensi.kategori;
@@ -105,7 +91,7 @@ export default async function PotensiDetailPage({
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#f4a100] transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Kembali ke Potensi Desa
+          Kembali
         </Link>
 
         {/* Meta Info */}
@@ -174,20 +160,30 @@ export default async function PotensiDetailPage({
           </div>
         </article>
 
-        {/* Tags */}
-        <div className="mt-10 pt-6 border-t border-gray-200 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-500 font-medium">Tag:</span>
-          <span className="text-xs bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1 rounded-full font-medium capitalize">
-            {categoryLabel}
-          </span>
-          {potensi.lokasi && (
-            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1 rounded-full font-medium">
-              {potensi.lokasi}
+        {/* Tags + Back button */}
+        <div className="mt-10 pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-500 font-medium">Tag:</span>
+            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1 rounded-full font-medium capitalize">
+              {categoryLabel}
             </span>
-          )}
-          <span className="text-xs bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1 rounded-full font-medium">
-            Desa Matteko
-          </span>
+            {potensi.lokasi && (
+              <span className="text-xs bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1 rounded-full font-medium">
+                {potensi.lokasi}
+              </span>
+            )}
+            <span className="text-xs bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1 rounded-full font-medium">
+              Dusun Matteko
+            </span>
+          </div>
+
+          <Link
+            href="/potensi"
+            className="inline-flex items-center gap-2 text-sm bg-[#f4a100] hover:bg-[#d98f00] text-white font-semibold px-5 py-2 rounded-lg transition-colors shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Kembali
+          </Link>
         </div>
       </div>
 

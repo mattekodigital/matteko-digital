@@ -75,12 +75,14 @@ function SectionHeader({
   title,
   href,
   linkLabel = "Lihat Semua",
+  ariaLabel,
   dark = false,
 }: {
   eyebrow: string;
   title: string;
   href: string;
   linkLabel?: string;
+  ariaLabel?: string;
   dark?: boolean;
 }) {
   return (
@@ -93,13 +95,14 @@ function SectionHeader({
       </div>
       <Link
         href={href}
+        aria-label={ariaLabel || linkLabel}
         className={cn(
           "hidden sm:flex items-center gap-1.5 text-sm font-semibold transition-colors duration-200 group",
           dark ? "text-blue-400 hover:text-blue-300" : "text-amber-500 hover:text-amber-600"
         )}
       >
         {linkLabel}
-        <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+        <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
       </Link>
     </div>
   );
@@ -143,13 +146,14 @@ function BeritaCard({ item, index }: { item: InformasiDesa; index: number }) {
         <p className="text-gray-400 text-sm line-clamp-3 mb-4 flex-1">
           {truncate(item.konten)}
         </p>
-        <Link
-          href={`/informasi/berita/${item.id}`}
-          className="text-blue-400 font-semibold text-sm flex items-center gap-1 hover:text-blue-300 transition-colors group w-fit mt-auto"
-        >
-          Baca Selengkapnya
-          <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
-        </Link>
+          <Link
+            href={`/informasi/berita/${item.id}`}
+            aria-label={`Baca selengkapnya: ${item.judul}`}
+            className="text-blue-400 font-semibold text-sm flex items-center gap-1 hover:text-blue-300 transition-colors group w-fit mt-auto"
+          >
+            Baca Selengkapnya
+            <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
+          </Link>
       </div>
     </div>
   );
@@ -203,10 +207,11 @@ function PotensiCard({ item, index }: { item: InformasiDesa; index: number }) {
         <div className="mt-auto pt-5 border-t border-gray-100">
           <Link
             href={`/potensi/${item.id}`}
+            aria-label={`Lihat detail: ${item.judul}`}
             className="text-amber-500 font-bold text-sm flex items-center gap-1 hover:text-amber-600 transition-colors group w-fit"
           >
             Lihat Detail
-            <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+            <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
           </Link>
         </div>
       </div>
@@ -302,7 +307,7 @@ export default function HomeClient({ profil, beritaList, potensiList }: HomeClie
               className="bg-white/10 border-white/30 hover:bg-white/20 active:scale-95 text-white font-semibold rounded-full px-6 py-5 backdrop-blur-sm transition-all duration-200"
             >
               <Link href="/profil">
-                Profil Desa
+                Profil Dusun
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>
@@ -408,6 +413,7 @@ export default function HomeClient({ profil, beritaList, potensiList }: HomeClie
             eyebrow="Kabar Desa"
             title="Berita Terbaru"
             href="/informasi/berita"
+            ariaLabel="Lihat semua berita dusun"
             dark
           />
 
@@ -426,8 +432,8 @@ export default function HomeClient({ profil, beritaList, potensiList }: HomeClie
 
           <div className="mt-8 flex sm:hidden justify-center">
             <Button asChild variant="outline" className="border-blue-500/40 text-blue-400 hover:bg-blue-900/30 rounded-full">
-              <Link href="/informasi/berita">
-                Semua Berita <ArrowRight className="w-4 h-4 ml-2" />
+              <Link href="/informasi/berita" aria-label="Lihat semua berita dusun">
+                Semua Berita <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
               </Link>
             </Button>
           </div>
@@ -438,8 +444,9 @@ export default function HomeClient({ profil, beritaList, potensiList }: HomeClie
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
             eyebrow="Kekayaan Lokal"
-            title="Jelajahi Potensi Desa"
+            title="Jelajahi Potensi Dusun"
             href="/potensi"
+            ariaLabel="Lihat semua potensi dusun"
           />
 
           {potensiList.length === 0 ? (
@@ -457,8 +464,8 @@ export default function HomeClient({ profil, beritaList, potensiList }: HomeClie
 
           <div className="mt-8 flex sm:hidden justify-center">
             <Button asChild variant="outline" className="border-amber-400 text-amber-600 hover:bg-amber-50 rounded-full">
-              <Link href="/potensi">
-                Semua Potensi <ArrowRight className="w-4 h-4 ml-2" />
+              <Link href="/potensi" aria-label="Lihat semua potensi dusun">
+                Semua Potensi <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
               </Link>
             </Button>
           </div>
