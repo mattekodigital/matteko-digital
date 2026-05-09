@@ -23,6 +23,8 @@ jobs:
 
       - name: Build Next.js
         run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Compress build
         run: tar -czf deploy.tar.gz .next public package.json package-lock.json
