@@ -210,26 +210,36 @@ export const Navbar = ({ profil }: { profil?: ProfilDusun }) => {
             </Button>
           </SheetTrigger>
 
-          <SheetContent side="right" className="w-[300px] sm:w-[360px] p-0 bg-white">
-            <div className="flex items-center px-5 py-4 border-b border-gray-100">
+          <SheetContent side="right" showCloseButton={false} className="w-[300px] sm:w-[360px] p-0 bg-white">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <Link
                 href="/"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2.5"
+                className="flex items-center gap-2.5 min-w-0"
               >
-                <div className="relative w-8 h-8">
+                <div className="relative w-8 h-8 shrink-0">
                   <Image
-                    src={profil?.url_logo || "/logo.png"}
+                    src={profil?.url_logo || "/logo.webp"}
                     alt="Logo"
                     fill
                     className="object-contain"
                     sizes="32px"
                   />
                 </div>
-                <span className="font-bold text-gray-900 text-sm">
+                <span className="font-bold text-gray-900 text-sm truncate">
                   {profil?.nama_dusun || "Dusun Matteko"}
                 </span>
               </Link>
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 ml-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                  aria-label="Tutup menu"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </SheetClose>
             </div>
 
             <div className="overflow-y-auto h-full pb-24 px-3 py-3 space-y-1">

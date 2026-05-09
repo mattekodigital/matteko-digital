@@ -48,6 +48,7 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             cd /var/www/matteko-digital
+            rm -rf .next
             tar -xzf deploy.tar.gz
             npm install --omit=dev
             pm2 restart matteko-digital || pm2 start npm --name matteko-digital -- start

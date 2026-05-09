@@ -109,7 +109,7 @@ export default async function ProfilPage() {
                 </div>
                 <h2 className="font-semibold text-gray-800 text-lg">Sejarah Dusun</h2>
               </div>
-              <div className="text-gray-600 text-sm leading-relaxed space-y-3 whitespace-pre-wrap">
+              <div className="text-gray-600 text-sm leading-relaxed space-y-3 whitespace-pre-wrap text-justify">
                 {profil?.sejarah_dusun || "Informasi sejarah dusun belum tersedia."}
               </div>
             </div>
