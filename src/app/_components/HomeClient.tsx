@@ -275,10 +275,6 @@ export default function HomeClient({ profil, beritaList, potensiList }: HomeClie
             heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           )}
         >
-          <div className="inline-flex items-center gap-2 bg-blue-500/30 backdrop-blur-sm border border-blue-400/30 text-blue-200 text-xs font-semibold px-4 py-1.5 rounded-full mb-6 uppercase tracking-widest">
-            <Star className="w-3 h-3 fill-blue-300 text-blue-300" />
-            Website Resmi Pemerintahan
-          </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight max-w-2xl">
             Selamat Datang di{" "}
