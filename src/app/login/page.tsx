@@ -73,7 +73,7 @@ export default async function LoginPage() {
             Panel Admin
           </h1>
           <p className="text-sm mt-1" style={{ color: "oklch(0.65 0.05 264)" }}>
-            Desa Matteko Digital
+            Dusun Matteko Digital
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export default async function LoginPage() {
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-white">Selamat Datang</h2>
             <p className="text-sm mt-1" style={{ color: "oklch(0.6 0.04 264)" }}>
-              Masuk untuk mengelola konten desa
+              Masuk untuk mengelola konten dusun
             </p>
           </div>
 
@@ -103,7 +103,7 @@ export default async function LoginPage() {
           className="text-center text-xs mt-6"
           style={{ color: "oklch(0.45 0.03 264)" }}
         >
-          © {new Date().getFullYear()} Desa Matteko — Sistem Informasi Desa
+          © {new Date().getFullYear()} Dusun Matteko - Sistem Informasi Dusun
         </p>
       </div>
     </div>

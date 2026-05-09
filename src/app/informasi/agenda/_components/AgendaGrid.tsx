@@ -58,6 +58,20 @@ const statusDot: Record<string, string> = {
   Selesai: "bg-gray-400",
 };
 
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-28 text-center px-4">
+      <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-5 border border-green-100">
+        <CalendarDays className="w-9 h-9 text-green-300" />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-600 mb-1">Belum Ada Agenda</h3>
+      <p className="text-sm text-gray-400 max-w-xs">
+        Jadwal kegiatan dan acara mendatang di dusun akan ditampilkan di sini.
+      </p>
+    </div>
+  );
+}
+
 interface Props {
   items: InformasiDesa[];
 }
@@ -92,15 +106,10 @@ export default function AgendaGrid({ items }: Props) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  if (items.length === 0) return <EmptyState />;
+
   return (
     <>
-      {items.length === 0 && (
-        <div className="text-center py-20 text-gray-400">
-          <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-40" />
-          <p className="text-lg font-medium">Belum ada agenda yang dipublikasikan.</p>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         {paginated.map((item) => {
           const { day, month, dayName } = getDateParts(item.tanggal_kegiatan);

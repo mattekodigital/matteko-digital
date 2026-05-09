@@ -288,7 +288,7 @@ export default function InformasiDesaForm({ mode, initialData }: Props) {
         if (result.error) throw new Error(result.error)
         showToast("success", "Data berhasil diperbarui!")
       }
-      setTimeout(() => router.push("/dashboard/informasi-desa"), 1200)
+      setTimeout(() => router.push("/dashboard/informasi-dusun"), 1200)
     } catch (err: unknown) {
       const errorMessage = err && typeof err === 'object' && 'message' in err
         ? String(err.message)

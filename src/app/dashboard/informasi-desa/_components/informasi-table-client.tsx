@@ -159,7 +159,7 @@ export function InformasiTableClient({ items }: { items: InformasiDesa[] }) {
             </p>
             {!search && kategori === "semua" && (
               <Link
-                href="/dashboard/informasi-desa/tambah"
+                href="/dashboard/informasi-dusun/tambah"
                 className="text-blue-400 text-sm hover:underline mt-2 inline-block"
               >
                 Tambah sekarang →
@@ -246,7 +246,7 @@ export function InformasiTableClient({ items }: { items: InformasiDesa[] }) {
                     {/* Aksi */}
                     <td className="px-5 py-4 text-right">
                       <Link
-                        href={`/dashboard/informasi-desa/${item.id}/edit`}
+                        href={`/dashboard/informasi-dusun/${item.id}/edit`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700/50 hover:bg-blue-600 border border-slate-600/50 hover:border-blue-500 text-slate-300 hover:text-white text-xs font-medium transition-all"
                       >
                         <PencilIcon className="size-3" />

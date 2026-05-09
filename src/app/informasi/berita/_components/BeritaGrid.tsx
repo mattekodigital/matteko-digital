@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Calendar, User, ArrowRight, Megaphone } from "lucide-react";
+import { Calendar, User, ArrowRight, Megaphone, Newspaper } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -29,6 +29,20 @@ function formatDate(dateString: string | null): string {
 function truncate(text: string, maxLength = 150): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trimEnd() + "...";
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-28 text-center px-4">
+      <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-5 border border-blue-100">
+        <Newspaper className="w-9 h-9 text-blue-300" />
+      </div>
+      <h3 className="text-lg font-semibold text-gray-600 mb-1">Belum Ada Berita</h3>
+      <p className="text-sm text-gray-400 max-w-xs">
+        Berita dan artikel terbaru seputar dusun akan ditampilkan di sini.
+      </p>
+    </div>
+  );
 }
 
 interface Props {
@@ -65,14 +79,10 @@ export default function BeritaGrid({ items }: Props) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  if (items.length === 0) return <EmptyState />;
+
   return (
     <>
-      {items.length === 0 && (
-        <div className="text-center py-20 text-gray-400">
-          <p className="text-lg font-medium">Belum ada berita yang dipublikasikan.</p>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         {paginated.map((item) => (
           <Link

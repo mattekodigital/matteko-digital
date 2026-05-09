@@ -62,7 +62,7 @@ export default function LoginForm() {
             type="email"
             autoComplete="email"
             required
-            placeholder="admin@desa-matteko.id"
+            placeholder="admin@dusunmatteko.id"
             style={{ ...inputBase, paddingLeft: "2.5rem" }}
             onFocus={(e) => {
               e.target.style.borderColor = "oklch(0.55 0.22 264)"

@@ -120,7 +120,7 @@ export default async function DashboardPage() {
               <h3 className="font-semibold mb-4 text-slate-200">Aksi Cepat</h3>
               <div className="flex flex-col gap-3">
                 <Link
-                  href="/dashboard/informasi-desa/tambah"
+                  href="/dashboard/informasi-dusun/tambah"
                   className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-3 rounded-lg text-left transition-colors border border-slate-700"
                 >
                   <div className="bg-blue-500/10 p-2.5 rounded-md">
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
                 </Link>
 
                 <Link
-                  href="/dashboard/informasi-desa"
+                  href="/dashboard/informasi-dusun"
                   className="flex items-center gap-4 bg-slate-800 hover:bg-slate-700 p-3 rounded-lg text-left transition-colors border border-slate-700"
                 >
                   <div className="bg-purple-500/10 p-2.5 rounded-md">
@@ -171,7 +171,7 @@ export default async function DashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-slate-200">Konten Terbaru Diterbitkan</h3>
                 <Link
-                  href="/dashboard/informasi-desa"
+                  href="/dashboard/informasi-dusun"
                   className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   Lihat semua →
@@ -183,7 +183,7 @@ export default async function DashboardPage() {
                   <FileTextIcon className="size-8 mx-auto mb-2 opacity-40" />
                   <p className="text-sm">Belum ada konten diterbitkan.</p>
                   <Link
-                    href="/dashboard/informasi-desa/tambah"
+                    href="/dashboard/informasi-dusun/tambah"
                     className="text-blue-400 text-xs hover:underline mt-1 inline-block"
                   >
                     Tambah konten pertama →
@@ -262,7 +262,7 @@ function NewsItem({
 }) {
   return (
     <Link
-      href={`/dashboard/informasi-desa/${id}/edit`}
+      href={`/dashboard/informasi-dusun/${id}/edit`}
       className="flex items-center gap-4 bg-slate-800/80 p-3 rounded-lg border border-slate-700/50 hover:bg-slate-700 transition-colors group"
     >
       <div className="w-16 h-12 bg-slate-700 rounded overflow-hidden shrink-0">

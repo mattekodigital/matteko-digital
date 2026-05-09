@@ -38,7 +38,7 @@ export default async function InformasiDesaDashboardPage() {
               </p>
             </div>
             <Link
-              href="/dashboard/informasi-desa/tambah"
+              href="/dashboard/informasi-dusun/tambah"
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors"
             >
               <PlusCircleIcon className="size-4" />
